@@ -82,7 +82,7 @@ jobs:
         run: npm run validate
       
       - name: Report validation issues
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         if: ${{ failure() }}
         with:
           script: |

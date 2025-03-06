@@ -5,17 +5,21 @@ node_modules/
 dist/
 
 # Generated documentation
-docs/generated/
+docs/generated/*
+!docs/generated/.gitkeep
+!docs/generated/README.md
 
 # Environment variables
 .env
 
 # Logs
-logs/
+logs/*
+!logs/README.md
 *.log
 
 # Session data
-.sessions/
+.sessions/*
+!.sessions/README.md
 
 # OS-specific files
 .DS_Store

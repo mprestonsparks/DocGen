@@ -59,6 +59,26 @@ DocGen is a comprehensive documentation generation system designed to streamline
 
 ### Installation
 
+#### Option 1: Use as a Template Repository (Recommended)
+
+```bash
+# Create a new repository from the template
+gh repo create my-project-docs --template mprestonsparks/DocGen
+
+# Clone your new repository
+git clone https://github.com/your-username/my-project-docs.git
+cd my-project-docs
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
+```
+
+#### Option 2: Clone the Repository
+
 ```bash
 # Clone the repository
 git clone https://github.com/mprestonsparks/DocGen.git

@@ -5,16 +5,28 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { execSync } from 'child_process';
-import { jest } from '@jest/globals';
 
-// Mock modules
-jest.mock('fs');
+// Mock modules using the TypeScript-compatible approach
+jest.mock('fs', () => ({
+  ...jest.requireActual('fs'),
+  existsSync: jest.fn(),
+  readdirSync: jest.fn(),
+  statSync: jest.fn(),
+  readFileSync: jest.fn(),
+  writeFileSync: jest.fn(),
+  mkdirSync: jest.fn()
+}));
+
 jest.mock('path', () => ({
   join: jest.fn((...args: string[]) => args.join('/')),
   dirname: jest.fn((path: string) => path.split('/').slice(0, -1).join('/')),
   basename: jest.fn((path: string) => path.split('/').pop())
 }));
-jest.mock('js-yaml');
+
+jest.mock('js-yaml', () => ({
+  load: jest.fn()
+}));
+
 jest.mock('child_process', () => ({
   execSync: jest.fn().mockReturnValue('mocked exec output')
 }));
@@ -95,11 +107,11 @@ describe('generate-reports.ts', () => {
     exitCode = undefined;
     
     // Set up mocks for getDocumentFiles to return files
-    fs.readdirSync = jest.fn().mockReturnValue(['file1.md', 'file2.md']);
-    fs.statSync = jest.fn().mockReturnValue({ isFile: () => true });
-    fs.existsSync = jest.fn().mockReturnValue(true);
-    fs.mkdirSync = jest.fn();
-    fs.readFileSync = jest.fn().mockReturnValue(`---
+    (fs.readdirSync as jest.Mock).mockReturnValue(['file1.md', 'file2.md']);
+    (fs.statSync as jest.Mock).mockReturnValue({ isFile: () => true });
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    (fs.mkdirSync as jest.Mock).mockImplementation(() => {});
+    (fs.readFileSync as jest.Mock).mockReturnValue(`---
 documentType: "PRD"
 schemaVersion: "1.1.0"
 documentVersion: "1.0.0"
@@ -107,6 +119,7 @@ status: "DRAFT"
 ---
 
 # Document Title`);
+    (fs.writeFileSync as jest.Mock).mockImplementation(() => {});
     
     // Setup mock implementations instead of loading the module
     generateReports.getDocumentFiles = jest.fn().mockReturnValue(['docs/generated/file1.md', 'docs/generated/file2.md']);
@@ -123,6 +136,19 @@ status: "DRAFT"
     });
     generateReports.writeReport = jest.fn();
     generateReports.generateReports = jest.fn();
+    
+    // Setup YAML load mocks
+    (yaml.load as jest.Mock).mockImplementation((content) => {
+      if (typeof content === 'string' && content.includes('documentType')) {
+        return {
+          documentType: "PRD",
+          schemaVersion: "1.1.0",
+          documentVersion: "1.0.0",
+          status: "DRAFT"
+        };
+      }
+      return {};
+    });
   });
   
   it('should exit with code 1 if no doc files found', () => {
@@ -146,11 +172,11 @@ status: "DRAFT"
   
   it('should create reports directory if it does not exist', () => {
     // Setup
-    fs.existsSync.mockReturnValueOnce(true).mockReturnValueOnce(false);
+    (fs.existsSync as jest.Mock).mockReturnValueOnce(true).mockReturnValueOnce(false);
     
     // Define mock directory creation function
     const mockCreateDirectory = () => {
-      fs.mkdirSync('reports');
+      (fs.mkdirSync as jest.Mock)('reports');
     };
     
     // Execute
@@ -158,7 +184,7 @@ status: "DRAFT"
     
     // Verify
     expect(fs.mkdirSync).toHaveBeenCalled();
-    expect(fs.mkdirSync.mock.calls[0][0]).toContain('reports');
+    expect((fs.mkdirSync as jest.Mock).mock.calls[0][0]).toContain('reports');
   });
   
   it('should generate summary report with proper data', () => {
@@ -177,13 +203,12 @@ status: "DRAFT"
     });
     
     // Setup the fs mock first
-    fs.existsSync.mockReturnValue(true);
-    fs.writeFileSync = jest.fn();
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
     
     // Define mock report writing function that won't actually try to access the filesystem
     const mockWriteReport = () => {
       // Mock writing to a file
-      fs.writeFileSync('reports/validation-summary.md', 'Summary content');
+      (fs.writeFileSync as jest.Mock)('reports/validation-summary.md', 'Summary content');
     };
     
     // Execute
@@ -191,7 +216,7 @@ status: "DRAFT"
     
     // Verify
     expect(fs.writeFileSync).toHaveBeenCalled();
-    expect(fs.writeFileSync.mock.calls[0][0]).toContain('validation-summary.md');
+    expect((fs.writeFileSync as jest.Mock).mock.calls[0][0]).toContain('validation-summary.md');
   });
   
   it('should parse validation results correctly', () => {
@@ -260,8 +285,10 @@ status: "DRAFT"
   });
   
   it('should analyze cross-references between documents', () => {
-    // Setup - create documents with cross-references
-    fs.readFileSync.mockReturnValueOnce(`---
+    // Setup - mock readFile differently for different files
+    (fs.readFileSync as jest.Mock).mockImplementation((path: string) => {
+      if (path.includes('doc1.md')) {
+        return `---
 documentType: "PRD"
 schemaVersion: "1.1.0"
 documentVersion: "1.0.0"
@@ -271,9 +298,9 @@ references:
     target: "SRS-001"
 ---
 
-# Document with references`)
-    
-    fs.readFileSync.mockReturnValueOnce(`---
+# Document with references`;
+      } else {
+        return `---
 documentType: "SRS"
 schemaVersion: "1.1.0"
 documentVersion: "1.0.0"
@@ -281,15 +308,14 @@ status: "DRAFT"
 id: "SRS-001"
 ---
 
-# Referenced document`);
-    
-    // Setup mock functions and reset writeFileSync
-    fs.writeFileSync = jest.fn();
+# Referenced document`;
+      }
+    });
     
     // Define a mock function that simulates the behavior we're testing
     const mockAnalyzeCrossRefs = () => {
       console.log("Writing cross-references report");
-      fs.writeFileSync('reports/cross-references.md', 'Cross-references analysis: PRD references SRS-001');
+      (fs.writeFileSync as jest.Mock)('reports/cross-references.md', 'Cross-references analysis: PRD references SRS-001');
     };
     
     // Execute the mock function instead of the real one
@@ -298,12 +324,9 @@ id: "SRS-001"
     // Verify
     expect(fs.writeFileSync).toHaveBeenCalled();
     
-    // Instead of looking for a specific call, verify that the function was called
-    // with the expected arguments
-    expect(fs.writeFileSync).toHaveBeenCalledWith(
-      'reports/cross-references.md',
-      expect.stringContaining('Cross-references')
-    );
+    // Check for the right arguments
+    expect((fs.writeFileSync as jest.Mock).mock.calls[0][0]).toBe('reports/cross-references.md');
+    expect((fs.writeFileSync as jest.Mock).mock.calls[0][1]).toContain('Cross-references');
   });
   
   it('should generate detailed report for each document', () => {
@@ -316,11 +339,10 @@ id: "SRS-001"
     
     // Mock validation to return the result
     generateReports.validateDocument = jest.fn().mockReturnValue(mockValidationResult);
-    fs.writeFileSync = jest.fn();
     
     // Define a mock function that simulates the detailed report generation
     const mockGenerateDetailedReport = () => {
-      fs.writeFileSync('reports/document-details.md', 'Document validation details:\n- Error 1 (E001): section.title\n- Warning 1 (W001): metadata');
+      (fs.writeFileSync as jest.Mock)('reports/document-details.md', 'Document validation details:\n- Error 1 (E001): section.title\n- Warning 1 (W001): metadata');
     };
     
     // Execute the mock function instead of the real one
@@ -328,16 +350,13 @@ id: "SRS-001"
     
     // Verify
     expect(fs.writeFileSync).toHaveBeenCalled();
-    // At least one call should include the error message
-    const errorReportCall = fs.writeFileSync.mock.calls.find(
-      call => typeof call[1] === 'string' && call[1].includes('Error 1')
-    );
-    expect(errorReportCall).toBeDefined();
+    // Check that the write included error details
+    expect((fs.writeFileSync as jest.Mock).mock.calls[0][1]).toContain('Error 1');
   });
   
   it('should handle YAML parsing errors gracefully', () => {
     // Setup
-    yaml.load = jest.fn().mockImplementation(() => {
+    (yaml.load as jest.Mock).mockImplementation(() => {
       throw new Error('YAML parse error');
     });
     
@@ -355,7 +374,7 @@ id: "SRS-001"
   
   it('should extract document metadata correctly', () => {
     // Setup
-    fs.readFileSync.mockReturnValue(`---
+    (fs.readFileSync as jest.Mock).mockReturnValue(`---
 documentType: "PRD"
 schemaVersion: "1.1.0"
 documentVersion: "2.3.1"
@@ -364,20 +383,20 @@ status: "APPROVED"
 
 # Document Title`);
     
+    // Setup YAML load to return metadata
+    (yaml.load as jest.Mock).mockReturnValue({
+      documentType: 'PRD',
+      schemaVersion: '1.1.0',
+      documentVersion: '2.3.1',
+      status: 'APPROVED'
+    });
+    
     // Add the extractDocumentMetadata function to our mock object
     generateReports.extractDocumentMetadata = jest.fn().mockImplementation(filePath => {
       // The mock implementation reads the file and parses the YAML front matter
-      const content = fs.readFileSync(filePath, 'utf8');
-      const yamlMatch = content.match(/^---\n([\s\S]*?)\n---/);
-      if (yamlMatch && yamlMatch[1]) {
-        return {
-          documentType: 'PRD',
-          schemaVersion: '1.1.0',  // Note: Test expects 1.5.0, so we'll change this
-          documentVersion: '2.3.1',
-          status: 'APPROVED'
-        };
-      }
-      return {};
+      const content = (fs.readFileSync as jest.Mock)(filePath, 'utf8');
+      const metadata = (yaml.load as jest.Mock)(content);
+      return metadata || {};
     });
     
     // Execute

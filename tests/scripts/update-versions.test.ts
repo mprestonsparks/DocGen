@@ -5,17 +5,30 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import * as semver from 'semver';
-import { jest } from '@jest/globals';
 
-// Mock modules
-jest.mock('fs');
+// Mock modules - but use ES module compatible approach
+jest.mock('fs', () => ({
+  ...jest.requireActual('fs'),
+  existsSync: jest.fn(),
+  readdirSync: jest.fn(),
+  statSync: jest.fn(),
+  readFileSync: jest.fn(),
+  writeFileSync: jest.fn()
+}));
+
 jest.mock('path', () => ({
   join: jest.fn((...args: string[]) => args.join('/')),
   dirname: jest.fn((path: string) => path.split('/').slice(0, -1).join('/')),
   basename: jest.fn((path: string) => path.split('/').pop())
 }));
-jest.mock('js-yaml');
-jest.mock('semver');
+
+jest.mock('js-yaml', () => ({
+  load: jest.fn()
+}));
+
+jest.mock('semver', () => ({
+  inc: jest.fn()
+}));
 
 // Define interfaces
 interface VersionInfo {
@@ -79,10 +92,10 @@ describe('update-versions.ts', () => {
     exitCode = undefined;
     
     // Set up common mocks
-    fs.existsSync = jest.fn().mockReturnValue(true);
-    fs.readdirSync = jest.fn().mockReturnValue(['doc1.md', 'doc2.md']);
-    fs.statSync = jest.fn().mockReturnValue({ isFile: () => true });
-    fs.readFileSync = jest.fn().mockReturnValue(`---
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    (fs.readdirSync as jest.Mock).mockReturnValue(['doc1.md', 'doc2.md']);
+    (fs.statSync as jest.Mock).mockReturnValue({ isFile: () => true });
+    (fs.readFileSync as jest.Mock).mockReturnValue(`---
 documentType: "PRD"
 schemaVersion: "1.1.0"
 documentVersion: "1.2.3"
@@ -90,11 +103,10 @@ status: "DRAFT"
 ---
 
 # Document Title`);
-    fs.writeFileSync = jest.fn();
     
     // Mock yaml.load to parse YAML front matter
-    yaml.load = jest.fn(content => {
-      if (typeof content === 'string' && content.startsWith('---')) {
+    (yaml.load as jest.Mock).mockImplementation(content => {
+      if (typeof content === 'string' && content.includes('documentType')) {
         return {
           documentType: "PRD",
           schemaVersion: "1.1.0",
@@ -106,8 +118,8 @@ status: "DRAFT"
     });
     
     // Mock semver.inc to increment versions
-    semver.inc = jest.fn().mockImplementation((version, type) => {
-      const versions = {
+    (semver.inc as jest.Mock).mockImplementation((version, type) => {
+      const versions: Record<string, Record<string, string>> = {
         '1.2.3': {
           patch: '1.2.4',
           minor: '1.3.0',
@@ -123,12 +135,12 @@ status: "DRAFT"
     // Setup mock implementation for updating versions
     updateVersions.findDocFiles = jest.fn().mockReturnValue(['docs/generated/doc1.md', 'docs/generated/doc2.md']);
     updateVersions.parseVersionInfo = jest.fn().mockReturnValue({
-      documentType: 'PRD',
+      type: 'PRD',
       schemaVersion: '1.1.0',
-      documentVersion: '1.2.3'
+      currentVersion: '1.2.3'
     });
     updateVersions.incrementVersion = jest.fn().mockImplementation((version, type) => {
-      return semver.inc(version, type);
+      return (semver.inc as jest.Mock)(version, type);
     });
     updateVersions.updateDocumentVersion = jest.fn().mockReturnValue('Updated content');
   });
@@ -228,7 +240,7 @@ status: "REVIEW"
     // Setup
     const invalidContent = `# Just a markdown file
 Without YAML front matter`;
-    yaml.load.mockImplementation(() => {
+    (yaml.load as jest.Mock).mockImplementation(() => {
       throw new Error('YAML parse error');
     });
     
@@ -261,7 +273,7 @@ Without YAML front matter`;
     
     // Define mock update function
     const mockUpdateFiles = () => {
-      fs.writeFileSync('docs/generated/doc1.md', '---\ndocumentVersion: "1.2.4"\n---');
+      (fs.writeFileSync as jest.Mock)('docs/generated/doc1.md', '---\ndocumentVersion: "1.2.4"\n---');
     };
     
     // Execute
@@ -269,7 +281,7 @@ Without YAML front matter`;
     
     // Verify
     expect(fs.writeFileSync).toHaveBeenCalled();
-    expect(fs.writeFileSync.mock.calls[0][1]).toContain('documentVersion: "1.2.4"');
+    expect((fs.writeFileSync as jest.Mock).mock.calls[0][1]).toContain('documentVersion: "1.2.4"');
   });
   
   it('should increment version according to bump type', () => {
@@ -289,7 +301,7 @@ Without YAML front matter`;
       
       // Execute
       updateVersions.incrementVersion = jest.fn().mockImplementation((version, type) => {
-        semver.inc(version, type);
+        (semver.inc as jest.Mock)(version, type);
         return test.expected;
       });
       
@@ -303,7 +315,7 @@ Without YAML front matter`;
   
   it('should handle YAML parsing errors gracefully', () => {
     // Setup
-    yaml.load = jest.fn().mockImplementation(() => {
+    (yaml.load as jest.Mock).mockImplementation(() => {
       throw new Error('YAML parse error');
     });
     

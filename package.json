@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "interview": "ts-node scripts/initialize.ts",
-    "validate": "ts-node scripts/validate-docs.ts",
+    "validate": "node scripts/validate-docs.js",
     "update-versions": "ts-node scripts/update-versions.ts patch",
-    "generate-reports": "ts-node scripts/generate-reports.ts",
+    "generate-reports": "node scripts/generate-reports.js",
     "test": "jest",
     "test:single": "jest -t",
     "build": "tsc",

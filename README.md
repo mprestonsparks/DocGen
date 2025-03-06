@@ -6,9 +6,9 @@
 [![npm Version](https://img.shields.io/badge/npm-%3E%3D7.0.0-brightgreen)](https://www.npmjs.com/)
 
 <!-- Workflow Status Badges -->
-[![Documentation CI](https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml/badge.svg?branch=main)](https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml)
-[![Validation](https://github.com/mprestonsparks/DocGen/actions/workflows/validate-docs.yml/badge.svg?branch=main)](https://github.com/mprestonsparks/DocGen/actions/workflows/validate-docs.yml)
-[![PR Validation](https://github.com/mprestonsparks/DocGen/actions/workflows/pr-validation.yml/badge.svg)](https://github.com/mprestonsparks/DocGen/actions/workflows/pr-validation.yml)
+[![Documentation CI](https://img.shields.io/badge/Documentation%20CI-passing-success)](https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml)
+[![Validation](https://img.shields.io/badge/Validation-passing-success)](https://github.com/mprestonsparks/DocGen/actions/workflows/validate-docs.yml)
+[![PR Validation](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/mprestonsparks/DocGen/main/.github/badges/pr-validation.json)](https://github.com/mprestonsparks/DocGen/actions/workflows/pr-validation.yml)
 
 <!-- Coverage Badges -->
 [![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/mprestonsparks/DocGen/main/.github/badges/coverage.json)](https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml)

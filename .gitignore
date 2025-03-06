@@ -1,0 +1,28 @@
+# Dependency directories
+node_modules/
+
+# Build outputs
+dist/
+
+# Generated documentation
+docs/generated/
+
+# Environment variables
+.env
+
+# Logs
+logs/
+*.log
+
+# Session data
+.sessions/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,4 +1,4 @@
-# DocGen
+# DocGen - AI-Powered Documentation Template System
 
 <!-- Project Status Badges -->
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/mprestonsparks/DocGen/blob/main/LICENSE)

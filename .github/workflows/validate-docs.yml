@@ -58,7 +58,7 @@ jobs:
         git push
       
     - name: Archive documentation reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: documentation-reports
         path: docs/reports/

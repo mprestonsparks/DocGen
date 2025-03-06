@@ -1,0 +1,136 @@
+{
+  "technology_stacks": {
+    "FRONTEND": {
+      "options": [
+        {
+          "id": "REACT",
+          "name": "React",
+          "description": "A JavaScript library for building user interfaces",
+          "documentation_needs": ["COMPONENT_LIBRARY", "STATE_MANAGEMENT"]
+        },
+        {
+          "id": "ANGULAR",
+          "name": "Angular",
+          "description": "A platform for building mobile and desktop web applications",
+          "documentation_needs": ["COMPONENT_LIBRARY", "MODULE_STRUCTURE"]
+        },
+        {
+          "id": "VUE",
+          "name": "Vue.js",
+          "description": "A progressive framework for building user interfaces",
+          "documentation_needs": ["COMPONENT_LIBRARY", "STATE_MANAGEMENT"]
+        }
+      ]
+    },
+    "BACKEND": {
+      "options": [
+        {
+          "id": "NODE",
+          "name": "Node.js",
+          "description": "A JavaScript runtime built on Chrome's V8 JavaScript engine",
+          "documentation_needs": ["API_DOCUMENTATION", "ENVIRONMENT_SETUP"]
+        },
+        {
+          "id": "PYTHON",
+          "name": "Python",
+          "description": "A programming language that lets you work quickly and integrate systems effectively",
+          "documentation_needs": ["API_DOCUMENTATION", "ENVIRONMENT_SETUP"]
+        },
+        {
+          "id": "JAVA",
+          "name": "Java",
+          "description": "A class-based, object-oriented programming language",
+          "documentation_needs": ["API_DOCUMENTATION", "CLASS_HIERARCHY"]
+        }
+      ]
+    },
+    "DATABASE": {
+      "options": [
+        {
+          "id": "POSTGRESQL",
+          "name": "PostgreSQL",
+          "description": "A powerful, open source object-relational database system",
+          "documentation_needs": ["DATA_MODEL", "MIGRATION_STRATEGY"]
+        },
+        {
+          "id": "MONGODB",
+          "name": "MongoDB",
+          "description": "A document-oriented NoSQL database",
+          "documentation_needs": ["DATA_MODEL", "SCHEMA_DESIGN"]
+        },
+        {
+          "id": "MYSQL",
+          "name": "MySQL",
+          "description": "An open-source relational database management system",
+          "documentation_needs": ["DATA_MODEL", "MIGRATION_STRATEGY"]
+        }
+      ]
+    },
+    "MOBILE": {
+      "options": [
+        {
+          "id": "REACT_NATIVE",
+          "name": "React Native",
+          "description": "A framework for building native apps using React",
+          "documentation_needs": ["COMPONENT_LIBRARY", "PLATFORM_SPECIFICS"]
+        },
+        {
+          "id": "FLUTTER",
+          "name": "Flutter",
+          "description": "Google's UI toolkit for building natively compiled applications",
+          "documentation_needs": ["WIDGET_CATALOG", "STATE_MANAGEMENT"]
+        },
+        {
+          "id": "SWIFT",
+          "name": "Swift (iOS)",
+          "description": "A powerful and intuitive programming language for iOS",
+          "documentation_needs": ["UI_GUIDELINES", "LIFECYCLE_MANAGEMENT"]
+        }
+      ]
+    },
+    "DEVOPS": {
+      "options": [
+        {
+          "id": "GITHUB_ACTIONS",
+          "name": "GitHub Actions",
+          "description": "Automate your workflow from idea to production",
+          "documentation_needs": ["CI_CD_PIPELINE", "WORKFLOW_CONFIGURATION"]
+        },
+        {
+          "id": "JENKINS",
+          "name": "Jenkins",
+          "description": "An open source automation server",
+          "documentation_needs": ["CI_CD_PIPELINE", "JOB_CONFIGURATION"]
+        },
+        {
+          "id": "DOCKER",
+          "name": "Docker",
+          "description": "A platform for developing, shipping, and running applications",
+          "documentation_needs": ["CONTAINER_STRATEGY", "ENVIRONMENT_CONFIGURATION"]
+        }
+      ]
+    }
+  },
+  "recommended_combinations": [
+    {
+      "name": "Modern Web Stack",
+      "components": ["REACT", "NODE", "MONGODB", "GITHUB_ACTIONS"]
+    },
+    {
+      "name": "Enterprise Java Stack",
+      "components": ["ANGULAR", "JAVA", "POSTGRESQL", "JENKINS"]
+    },
+    {
+      "name": "Python Data Stack",
+      "components": ["VUE", "PYTHON", "POSTGRESQL", "DOCKER"]
+    },
+    {
+      "name": "React Native Mobile Stack",
+      "components": ["REACT_NATIVE", "NODE", "MONGODB", "GITHUB_ACTIONS"]
+    },
+    {
+      "name": "iOS Swift Stack",
+      "components": ["SWIFT", "NODE", "POSTGRESQL", "GITHUB_ACTIONS"]
+    }
+  ]
+}

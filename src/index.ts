@@ -72,9 +72,45 @@ if (!process.argv.slice(2).length) {
 }
 
 /**
- * Load project defaults from configuration
+ * Validates schema version compatibility
+ * Ensures backward compatibility with documents using different schema versions
+ * @param documentSchemaVersion The schema version in the document
+ * @param currentSchemaVersion The current schema version (defaults to 1.1.0)
+ * @returns Boolean indicating if the schema version is compatible
  */
-function loadProjectDefaults(): ProjectDefaults {
+export function validateSchemaVersionCompatibility(
+  documentSchemaVersion: string,
+  currentSchemaVersion: string = '1.1.0'
+): boolean {
+  try {
+    // Parse versions into components
+    const docParts = documentSchemaVersion.split('.').map(Number);
+    const currentParts = currentSchemaVersion.split('.').map(Number);
+    
+    // Major version must match
+    if (docParts[0] !== currentParts[0]) {
+      return false;
+    }
+    
+    // Document minor version can be lower but not higher
+    if (docParts[1] > currentParts[1]) {
+      return false;
+    }
+    
+    // Document patch version can be anything if other conditions are met
+    return true;
+  } catch (error) {
+    logger.error('Error validating schema version compatibility', { error });
+    return false;
+  }
+}
+
+/**
+ * Load project defaults from configuration
+ * Ensures schema versions comply with the 1.1.0 standard
+ * @returns ProjectDefaults object with schema settings
+ */
+export function loadProjectDefaults(): ProjectDefaults {
   try {
     const configPath = path.join(process.cwd(), 'config/project-defaults.yaml');
     if (fs.existsSync(configPath)) {
@@ -85,7 +121,7 @@ function loadProjectDefaults(): ProjectDefaults {
   }
   
   return {
-    schema_versions: { prd: '1.0.0', srs: '1.0.0', sad: '1.0.0', sdd: '1.0.0', stp: '1.0.0' },
+    schema_versions: { prd: '1.1.0', srs: '1.1.0', sad: '1.1.0', sdd: '1.1.0', stp: '1.1.0' },
     document_versions: { prd: '1.0.0', srs: '1.0.0', sad: '1.0.0', sdd: '1.0.0', stp: '1.0.0' },
     document_statuses: ['DRAFT', 'REVIEW', 'APPROVED'],
     project_types: {

@@ -126,6 +126,7 @@ export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];
   warnings: ValidationWarning[];
+  schemaVersion?: string; // Added to capture and verify schema version
 }
 
 /**
@@ -136,6 +137,8 @@ export interface ValidationError {
   message: string;
   location: string;
   severity: 'error';
+  element?: string; // For referencing specific document elements
+  documentId?: string; // For traceability
 }
 
 /**
@@ -146,6 +149,8 @@ export interface ValidationWarning {
   message: string;
   location: string;
   severity: 'warning';
+  element?: string; // For referencing specific document elements
+  documentId?: string; // For traceability
 }
 
 /**
@@ -158,10 +163,39 @@ export interface CrossReference {
 }
 
 /**
+ * Schema versions for different document types
+ * As per documentation standards, current version is 1.1.0
+ */
+export interface SchemaVersions {
+  prd: string;
+  srs: string;
+  sad: string;
+  sdd: string;
+  stp: string;
+  [key: string]: string; // Allow additional document types
+}
+
+/**
+ * Document metadata structure for YAML frontmatter
+ */
+export interface DocumentMetadata {
+  schemaVersion: string; // Must be 1.1.0 for current documents
+  id: string; // Unique identifier for traceability
+  title: string;
+  version: string;
+  status: string;
+  date: string;
+  author: string;
+  reviewedBy?: string;
+  approvedBy?: string;
+  tags?: string[];
+}
+
+/**
  * Project defaults
  */
 export interface ProjectDefaults {
-  schema_versions: Record<string, string>;
+  schema_versions: SchemaVersions;
   document_versions: Record<string, string>;
   document_statuses: string[];
   project_types: Record<string, { recommended_docs: string[] }>;
@@ -173,9 +207,38 @@ export interface ProjectDefaults {
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug' | 'verbose';
 
 /**
+ * Relationship types for document traceability
+ */
+export type RelationshipType = 'IMPLEMENTS' | 'DEPENDS_ON' | 'REFINES' | 'VERIFIES' | 'DERIVED_FROM' | 'SATISFIES' | 'CONFLICTS_WITH';
+
+/**
+ * Document relationship for traceability
+ */
+export interface DocumentRelationship {
+  sourceId: string;
+  targetId: string;
+  type: RelationshipType;
+  description?: string;
+  timestamp: string; // ISO format date when relationship was created/updated
+}
+
+/**
+ * Change tracking element for version control at element level
+ */
+export interface ElementChange {
+  elementId: string;
+  timestamp: string;
+  author: string;
+  description: string;
+  previousValue?: string;
+  newValue: string;
+}
+
+/**
  * Template data for document generation
  */
 export interface TemplateData {
+  schemaVersion: string; // Must be 1.1.0 per documentation standards
   documentVersion: string;
   lastUpdated: string;
   status: string;

@@ -87,12 +87,12 @@ jobs:
       # This will be used to commit the badge to the repository
       - name: Commit and push coverage badge
         if: github.ref == 'refs/heads/main'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add .github/badges
-          git commit -m "Update test coverage badge" || exit 0
-          git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Update test coverage badge"
+          file_pattern: .github/badges/*
+          commit_options: "--no-verify"
+          push_options: "--force"
 
   validate:
     runs-on: ubuntu-latest

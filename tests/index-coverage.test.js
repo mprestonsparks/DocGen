@@ -603,7 +603,7 @@ describe('CLI Module', () => {
   });
   
   it('should handle empty question list', async () => {
-    const questions: string[] = [];
+    const questions = [];
     const interviewAnswers = {};
     
     await mockIndexBehaviors.askFollowUpQuestions(questions, interviewAnswers);

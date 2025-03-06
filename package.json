@@ -15,7 +15,7 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "interview:ts": "ts-node src/index.ts interview",
-    "lint": "eslint --config .eslintrc.cjs 'src/**/*.ts'",
+    "lint": "eslint --config .eslintrc.cjs --max-warnings 100 'src/**/*.ts'",
     "docker:build": "docker-compose -f .docker/docker-compose.yml build",
     "docker:up": "docker-compose -f .docker/docker-compose.yml up -d",
     "docker:down": "docker-compose -f .docker/docker-compose.yml down",

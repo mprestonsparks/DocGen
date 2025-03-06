@@ -74,7 +74,7 @@ export const callLLM = async (prompt: string, useCache = true): Promise<LLMRespo
       model: config.model,
       max_tokens: config.maxTokens,
       temperature: config.temperature,
-      system: "You are an expert software architect and technical writer assistant, helping generate high-quality documentation for software projects.",
+      system: 'You are an expert software architect and technical writer assistant, helping generate high-quality documentation for software projects.',
       messages: [
         { role: 'user', content: prompt }
       ]

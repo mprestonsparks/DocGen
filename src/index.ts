@@ -25,8 +25,8 @@ import {
   DocumentationNeeds,
   InterviewAnswers,
   ProjectDefaults,
-  ProjectType,
-  SessionData
+  ProjectType
+  // SessionData - removed unused import
 } from './types';
 
 // Set up command line arguments
@@ -685,8 +685,9 @@ async function generateDocument(
     if (fs.existsSync(hbsTemplatePath)) {
       // Use the Handlebars template
       try {
-        // Dynamically require handlebars only when needed
-        const Handlebars = require('handlebars');
+        // Import handlebars dynamically
+        const HandlebarsModule = await import('handlebars');
+        const Handlebars = HandlebarsModule.default;
         
         // Register some helper functions
         Handlebars.registerHelper('padZero', function(num: number, digits: number) {

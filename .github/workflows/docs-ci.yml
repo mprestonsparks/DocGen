@@ -60,33 +60,33 @@ jobs:
         run: |
           mkdir -p .github/badges
           
-          # Set a default coverage value
-          COVERAGE=59
+          # Calculate coverage from Jest output
+          if [ -f "./coverage/coverage-summary.json" ]; then
+            COVERAGE=$(node -e "
+              try {
+                const fs = require('fs');
+                const summary = JSON.parse(fs.readFileSync('./coverage/coverage-summary.json'));
+                if (summary && summary.total && summary.total.lines) {
+                  console.log(Math.round(summary.total.lines.pct));
+                } else {
+                  throw new Error('Invalid summary format');
+                }
+              } catch (error) {
+                console.log('0');
+              }
+            ")
+          elif [ -f "./coverage/lcov-report/index.html" ]; then
+            # Extract coverage from HTML report as a fallback
+            COVERAGE=$(grep -o 'class="fraction">[0-9]\+\/[0-9]\+' ./coverage/lcov-report/index.html | head -1 | grep -o '[0-9]\+\/[0-9]\+' | awk -F'/' '{ printf("%d\n", ($1/$2)*100) }')
+          else
+            # Default if no coverage files found
+            COVERAGE=0
+          fi
           
-          # Try to read the coverage report if it exists
-          if [ -f "./coverage/coverage-final.json" ]; then
-            COVERAGE_CALC=$(node -e "try { \
-              const fs=require('fs'); \
-              const report=JSON.parse(fs.readFileSync('./coverage/coverage-final.json')); \
-              if (Object.keys(report).length === 0) { \
-                console.log(59); \
-                process.exit(0); \
-              } \
-              const coverage=Object.values(report).reduce((acc, file) => { \
-                const covered = file.covered || 0; \
-                const missed = file.missed || 0; \
-                const total = covered + missed; \
-                return acc + (total > 0 ? covered / total : 0); \
-              }, 0) / Object.keys(report).length * 100; \
-              console.log(Math.round(coverage)); \
-            } catch (e) { \
-              console.log(59); \
-            }")
-            
-            # Only use calculated value if it's a valid number
-            if [[ "$COVERAGE_CALC" =~ ^[0-9]+$ ]]; then
-              COVERAGE=$COVERAGE_CALC
-            fi
+          # Validate that coverage is a number
+          if ! [[ $COVERAGE =~ ^[0-9]+$ ]]; then
+            COVERAGE=0
+            echo "Warning: Coverage calculation failed, using 0%"
           fi
           
           echo "Coverage percentage: $COVERAGE%"

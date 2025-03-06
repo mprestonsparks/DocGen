@@ -1,4 +1,6 @@
-# DocGen - AI-Powered Documentation Template System
+# DocGen - AI-Powered Documentation Template System 
+
+> An intelligent documentation management system with structured templates and AI assistance
 
 <!-- Project Status Badges -->
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/mprestonsparks/DocGen/blob/main/LICENSE)

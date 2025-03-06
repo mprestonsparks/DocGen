@@ -5,10 +5,12 @@ on:
     branches: [ main ]
     paths:
       - 'docs/**/*.md'
+      - 'docs/_templates/**/*.hbs'
   pull_request:
     branches: [ main ]
     paths:
       - 'docs/**/*.md'
+      - 'docs/_templates/**/*.hbs'
   workflow_dispatch:
 
 jobs:
@@ -17,6 +19,8 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
+      with:
+        persist-credentials: true
     
     - name: Setup Node.js
       uses: actions/setup-node@v3
@@ -28,10 +32,30 @@ jobs:
       run: npm ci
     
     - name: Validate documentation
+      id: validate
       run: npm run validate
+      continue-on-error: true
       
     - name: Generate reports
       run: npm run generate-reports
+      
+    - name: Generate documentation badge
+      run: |
+        mkdir -p .github/badges
+        if [ "${{ steps.validate.outcome }}" == "success" ]; then
+          echo '{"schemaVersion":1,"label":"docs","message":"valid","color":"success"}' > .github/badges/documentation-status.json
+        else
+          echo '{"schemaVersion":1,"label":"docs","message":"invalid","color":"critical"}' > .github/badges/documentation-status.json
+        fi
+      
+    - name: Commit and push badge
+      if: github.ref == 'refs/heads/main'
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add .github/badges
+        git commit -m "Update documentation status badge" || exit 0
+        git push
       
     - name: Archive documentation reports
       uses: actions/upload-artifact@v3

@@ -351,23 +351,27 @@ describe('Type Definitions', () => {
     it('should correctly structure project defaults', () => {
       const defaults: types.ProjectDefaults = {
         schema_versions: {
-          prd: '1.0.0',
-          srs: '1.0.0',
-          sad: '1.0.0'
+          prd: '1.1.0',
+          srs: '1.1.0',
+          sad: '1.1.0',
+          sdd: '1.1.0',
+          stp: '1.1.0'
         },
         document_versions: {
           prd: '1.0.0',
           srs: '1.0.0',
-          sad: '1.0.0'
+          sad: '1.0.0',
+          sdd: '1.0.0',
+          stp: '1.0.0'
         },
         document_statuses: ['DRAFT', 'REVIEW', 'APPROVED'],
         project_types: {
-          WEB: { recommended_docs: ['prd', 'srs', 'sad'] },
-          MOBILE: { recommended_docs: ['prd', 'srs'] }
+          WEB: { recommended_docs: ['prd', 'srs', 'sad', 'sdd', 'stp'] },
+          MOBILE: { recommended_docs: ['prd', 'srs', 'sad', 'sdd', 'stp'] }
         }
       };
       
-      expect(defaults.schema_versions.prd).toBe('1.0.0');
+      expect(defaults.schema_versions.prd).toBe('1.1.0');
       expect(defaults.document_statuses).toContain('DRAFT');
       expect(defaults.project_types.WEB.recommended_docs).toContain('prd');
     });

@@ -238,7 +238,7 @@ export interface ElementChange {
  * Template data for document generation
  */
 export interface TemplateData {
-  schemaVersion: string; // Must be 1.1.0 per documentation standards
+  schemaVersion?: string; // Must be 1.1.0 per documentation standards
   documentVersion: string;
   lastUpdated: string;
   status: string;

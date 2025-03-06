@@ -11,7 +11,6 @@
 [![Documentation Status](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/mprestonsparks/DocGen/main/.github/badges/documentation-status.json)](https://github.com/mprestonsparks/DocGen/actions/workflows/validate-docs.yml)
 
 <!-- GitHub Stats Badges -->
-[![GitHub Stars](https://img.shields.io/github/stars/mprestonsparks/DocGen)](https://github.com/mprestonsparks/DocGen/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/mprestonsparks/DocGen)](https://github.com/mprestonsparks/DocGen/issues)
 [![GitHub Pull Requests](https://img.shields.io/github/issues-pr/mprestonsparks/DocGen)](https://github.com/mprestonsparks/DocGen/pulls)
 [![Last Commit](https://img.shields.io/github/last-commit/mprestonsparks/DocGen)](https://github.com/mprestonsparks/DocGen/commits/main)

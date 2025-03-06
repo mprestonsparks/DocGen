@@ -2,7 +2,7 @@
 
 <!-- Project Status Badges -->
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/mprestonsparks/DocGen/blob/main/LICENSE)
-[![Node Version](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen)](https://nodejs.org/)
+[![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![npm Version](https://img.shields.io/badge/npm-%3E%3D7.0.0-brightgreen)](https://www.npmjs.com/)
 
 <!-- Workflow Status Badges -->
@@ -50,7 +50,7 @@ DocGen is a comprehensive documentation generation system designed to streamline
 
 ### Prerequisites
 
-- Node.js 16.x or higher
+- Node.js 18.x or higher
 - npm 7.x or higher
 - An Anthropic API key (for AI-enhanced features)
   - Create an account at [Anthropic](https://www.anthropic.com/)

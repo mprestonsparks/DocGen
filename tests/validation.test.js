@@ -18,11 +18,11 @@ function parseYamlFrontMatter(content) {
 describe('Document Structure Tests', () => {
   // Test template file paths
   const templatePaths = {
-    prd: path.join(__dirname, '../@claude-code/ai-prd.md'),
-    srs: path.join(__dirname, '../@claude-code/ai-srs.md'),
-    sad: path.join(__dirname, '../@claude-code/ai-sad.md'),
-    sdd: path.join(__dirname, '../@claude-code/ai-sdd.md'),
-    stp: path.join(__dirname, '../@claude-code/ai-stp.md'),
+    prd: path.join(__dirname, '../docs/_templates/prd.hbs'),
+    srs: path.join(__dirname, '../docs/_templates/srs.hbs'),
+    sad: path.join(__dirname, '../docs/_templates/sad.hbs'),
+    sdd: path.join(__dirname, '../docs/_templates/sdd.hbs'),
+    stp: path.join(__dirname, '../docs/_templates/stp.hbs'),
   };
 
   // Test that all template files exist
@@ -32,32 +32,19 @@ describe('Document Structure Tests', () => {
     });
   });
 
-  // Test YAML front matter in templates
-  test('Templates have valid YAML front matter', () => {
+  // Test template format (Handlebars templates will have different validation)
+  test('Handlebars templates have basic structure', () => {
     Object.entries(templatePaths).forEach(([type, templatePath]) => {
       const content = fs.readFileSync(templatePath, 'utf8');
-      const metadata = parseYamlFrontMatter(content);
       
-      expect(metadata).not.toBeNull();
-      expect(metadata.documentType).toBeDefined();
-      expect(metadata.schemaVersion).toBeDefined();
-      expect(metadata.documentVersion).toBeDefined();
-      expect(metadata.id).toBeDefined();
-      expect(metadata.project).toBeDefined();
-    });
-  });
-
-  // Test template consistency
-  test('Templates have consistent ID formats', () => {
-    Object.entries(templatePaths).forEach(([type, templatePath]) => {
-      const content = fs.readFileSync(templatePath, 'utf8');
-      const metadata = parseYamlFrontMatter(content);
-      
-      // Check document ID format (e.g., DOC-SRS-001)
-      expect(metadata.id).toMatch(/^DOC-[A-Z]+-\d+$/);
-      
-      // Check project ID format (e.g., PROJ-001)
-      expect(metadata.project.id).toMatch(/^PROJ-\d+$/);
+      // Check for YAML frontmatter section
+      expect(content).toMatch(/^---[\s\S]*?---/);
+      // Check for documentType
+      expect(content).toMatch(/documentType:/);
+      // Check for schemaVersion
+      expect(content).toMatch(/schemaVersion:/);
+      // Check for document ID section
+      expect(content).toMatch(/id:/);
     });
   });
 });

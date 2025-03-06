@@ -81,7 +81,7 @@ export const callLLM = async (prompt: string, useCache = true): Promise<LLMRespo
     });
     
     const result: LLMResponse = {
-      content: response.content[0].text,
+      content: response.content[0].type === 'text' ? response.content[0].text : JSON.stringify(response.content[0]),
       usage: {
         promptTokens: response.usage?.input_tokens || 0,
         completionTokens: response.usage?.output_tokens || 0,

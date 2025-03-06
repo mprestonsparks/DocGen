@@ -8,7 +8,7 @@ This document provides a reference for using GitHub CLI (`gh`) with DocGen.
 
 ```bash
 # Create a new repository from the DocGen template
-gh repo create my-project-docs --template yourusername/docgen
+gh repo create my-project-docs --template mprestonsparks/docgen
 
 # Clone and set up the repository
 gh repo clone my-project-docs
@@ -145,7 +145,7 @@ Creating a GitHub CLI extension for DocGen:
 
 ```bash
 # Create DocGen extension (if implemented)
-gh extension install yourusername/gh-docgen
+gh extension install mprestonsparks/gh-docgen
 
 # Example commands with custom extension
 gh docgen validate                  # Run validation on documentation

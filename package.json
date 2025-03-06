@@ -1,0 +1,59 @@
+{
+  "name": "docgen",
+  "version": "1.0.0",
+  "description": "AI-optimized documentation template system",
+  "main": "scripts/initialize.js",
+  "scripts": {
+    "interview": "node scripts/initialize.js",
+    "validate": "node scripts/validate-docs.js",
+    "update-versions": "node scripts/update-versions.js patch",
+    "generate-reports": "node scripts/generate-reports.js",
+    "test": "jest",
+    "test:single": "jest -t",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "interview:ts": "ts-node src/index.ts interview",
+    "lint": "eslint 'src/**/*.ts'",
+    "docker:build": "docker-compose -f .docker/docker-compose.yml build",
+    "docker:up": "docker-compose -f .docker/docker-compose.yml up -d",
+    "docker:down": "docker-compose -f .docker/docker-compose.yml down",
+    "docker:shell": "docker-compose -f .docker/docker-compose.yml exec docgen bash"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/docgen.git"
+  },
+  "keywords": [
+    "documentation",
+    "templates",
+    "ai",
+    "llm"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "commander": "^9.4.1",
+    "dotenv": "^16.4.7",
+    "handlebars": "^4.7.7",
+    "inquirer": "^8.2.5",
+    "js-yaml": "^4.1.0",
+    "semver": "^7.5.4",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^8.2.5",
+    "@types/jest": "^29.5.0",
+    "@types/js-yaml": "^4.0.5",
+    "@types/node": "^18.19.79",
+    "eslint": "^8.38.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

@@ -169,7 +169,7 @@ async function conductInterview(options: {
     }
     
     // Save session after gathering basic info
-    session.saveSession(sessionId, {
+    session.saveSession(sessionId!, {
       projectInfo,
       interviewAnswers
     });
@@ -182,7 +182,7 @@ async function conductInterview(options: {
     techStack = await recommendTechnologyStack(projectInfo);
     
     // Save session after tech stack
-    session.saveSession(sessionId, {
+    session.saveSession(sessionId!, {
       projectInfo,
       techStack,
       interviewAnswers
@@ -193,7 +193,7 @@ async function conductInterview(options: {
     documentationNeeds = await assessDocumentationNeeds(projectInfo, techStack);
     
     // Save session after documentation needs
-    session.saveSession(sessionId, {
+    session.saveSession(sessionId!, {
       projectInfo,
       techStack,
       documentationNeeds,
@@ -207,7 +207,7 @@ async function conductInterview(options: {
     await askFollowUpQuestions(followUpQuestions, interviewAnswers);
     
     // Save session after follow-up questions
-    session.saveSession(sessionId, {
+    session.saveSession(sessionId!, {
       projectInfo,
       techStack,
       documentationNeeds,
@@ -640,7 +640,7 @@ async function generateDocument(
     // First check if we have a Handlebars template
     const projectDefaults = loadProjectDefaults();
     const hbsTemplatePath = path.join(process.cwd(), `docs/_templates/${type}.hbs`);
-    const aiTemplatePath = path.join(process.cwd(), `@claude-code/ai-${type}.md`);
+    const fallbackTemplatePath = path.join(process.cwd(), `docs/_templates/fallback/${type}.md`);
     const outputPath = path.join(config.getOutputDir(), `${projectInfo.name.toLowerCase().replace(/\s+/g, '-')}-${type}.md`);
     
     // Determine which template to use
@@ -1011,7 +1011,7 @@ async function generateDocument(
               dependencies: ['PHASE000']
             }
           ],
-          directoryStructure: [
+          fileStructure: [
             '├── src/                           # Source code',
             '│   ├── components/               # UI components',
             '│   ├── services/                 # Business logic',
@@ -1038,7 +1038,7 @@ async function generateDocument(
           constraints: [
             { description: 'Must work on modern browsers', type: 'TECHNICAL', impact: 'Frontend technology choices' }
           ],
-          dataModels: [
+          entityModels: [
             {
               name: 'User',
               type: 'ENTITY',
@@ -1228,24 +1228,28 @@ async function generateDocument(
         logger.info('Used Handlebars template', { type });
       } catch (error) {
         logger.error('Error using Handlebars template', { error, type });
-        // Fallback to AI template
-        if (fs.existsSync(aiTemplatePath)) {
-          content = fs.readFileSync(aiTemplatePath, 'utf8');
-          logger.info('Falling back to AI template', { type });
+        // Check for fallback template
+        if (fs.existsSync(fallbackTemplatePath)) {
+          content = fs.readFileSync(fallbackTemplatePath, 'utf8');
+          logger.info('Falling back to simple template', { type });
         } else {
-          throw new Error(`No suitable template found for ${type.toUpperCase()}`);
+          // Create a basic template if fallback doesn't exist
+          content = createBasicTemplate(type, projectInfo);
+          logger.info('Creating basic template', { type });
         }
       }
-    } else if (fs.existsSync(aiTemplatePath)) {
-      // Use the AI template
-      content = fs.readFileSync(aiTemplatePath, 'utf8');
-      logger.info('Using AI template', { type });
+    } else if (fs.existsSync(fallbackTemplatePath)) {
+      // Use the fallback template
+      content = fs.readFileSync(fallbackTemplatePath, 'utf8');
+      logger.info('Using fallback template', { type });
     } else {
-      throw new Error(`No template found for ${type.toUpperCase()}`);
+      // Create a basic template if no templates exist
+      content = createBasicTemplate(type, projectInfo);
+      logger.info('Creating basic template', { type });
     }
     
     // Simple template variable replacement for non-Handlebars templates
-    if (content && fs.existsSync(aiTemplatePath)) {
+    if (content) {
       content = content.replace(/PROJ-001/g, projectInfo.id);
       content = content.replace(/Documentation Template System/g, projectInfo.name);
       content = content.replace(/2025-03-05/g, projectInfo.created.split('T')[0]);
@@ -1337,4 +1341,59 @@ function displayAllValidationResults(results: Record<string, any>): void {
       });
     }
   }
+}
+
+/**
+ * Create a basic template for a document type when no template exists
+ */
+function createBasicTemplate(type: string, projectInfo: ProjectInfo): string {
+  const today = new Date().toISOString().split('T')[0];
+  const docTypeMap: Record<string, string> = {
+    'prd': 'Product Requirements Document',
+    'srs': 'Software Requirements Specification',
+    'sad': 'System Architecture Document',
+    'sdd': 'Software Design Document',
+    'stp': 'Software Test Plan',
+    'swift-sdd': 'Swift Software Design Document'
+  };
+  
+  const docTitle = docTypeMap[type] || `${type.toUpperCase()} Document`;
+  
+  return `---
+documentType: "${type.toUpperCase()}"
+schemaVersion: "1.0.0"
+documentVersion: "1.0.0"
+lastUpdated: "${today}"
+status: "DRAFT"
+id: "DOC-${type.toUpperCase()}-001"
+project:
+  id: "${projectInfo.id}"
+  name: "${projectInfo.name}"
+---
+
+# ${projectInfo.name} ${docTitle}
+
+## 1. DOCUMENT CONTROL
+
+### 1.1. REVISION HISTORY
+
+| VERSION | DATE | DESCRIPTION | AUTHOR |
+|---------|------|-------------|--------|
+| 1.0.0   | ${today} | Initial draft | DocGen |
+
+## 2. INTRODUCTION
+
+### 2.1. PURPOSE
+
+This document describes the ${docTitle.toLowerCase()} for ${projectInfo.name}.
+
+### 2.2. SCOPE
+
+${projectInfo.description}
+
+## 3. OVERVIEW
+
+*This is a basic template created automatically by DocGen. Please customize it according to your project's needs.*
+
+`;
 }

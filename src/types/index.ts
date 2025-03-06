@@ -171,3 +171,91 @@ export interface ProjectDefaults {
  * Logger levels
  */
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug' | 'verbose';
+
+/**
+ * Template data for document generation
+ */
+export interface TemplateData {
+  documentVersion: string;
+  lastUpdated: string;
+  status: string;
+  projectId: string;
+  projectName: string;
+  projectDescription: string;
+  authorId: string;
+  visionStatement: string;
+  targetAudience: string[];
+  systemScope: {
+    includes: string[];
+    excludes: string[];
+  };
+  definitions: Array<{
+    id: string;
+    term: string;
+    definition: string;
+    context: string;
+  }>;
+  references: Array<{
+    id: string;
+    title: string;
+    source: string;
+    version: string;
+    url: string;
+  }>;
+  objectives: Array<{
+    description: string;
+    target: string;
+    measurement: string;
+  }>;
+  challenges: Array<{
+    description: string;
+    impact: string;
+    stakeholders: string[];
+  }>;
+  components: Array<{
+    name: string;
+    purpose: string;
+    features: string[];
+    responsibilities: string[];
+    dependencies: string[];
+    requirementsImplemented: string[];
+    classes?: Array<{
+      name: string;
+      purpose: string;
+      properties: Array<{
+        name: string;
+        type: string;
+      }>;
+      methods: Array<{
+        name: string;
+      }>;
+    }>;
+    interfaces?: Array<{
+      name: string;
+      methods: Array<{
+        returnType: string;
+        name: string;
+        parameters: Array<{
+          type: string;
+          name: string;
+        }>;
+      }>;
+    }>;
+  }>;
+  technologies: Array<{
+    name: string;
+    category: string;
+    purpose: string;
+  }>;
+  [key: string]: any;
+}
+
+/**
+ * Document generation options
+ */
+export interface DocumentGenerationOptions {
+  templatePath?: string;
+  outputPath?: string;
+  enhanceWithLLM?: boolean;
+  [key: string]: any;
+}

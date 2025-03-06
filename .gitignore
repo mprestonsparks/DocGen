@@ -26,3 +26,9 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Test coverage
+coverage/
+
+# Docker data directories
+.docker/data/

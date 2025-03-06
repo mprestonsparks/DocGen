@@ -12,7 +12,7 @@ import * as llmUtil from './llm';
 
 // File paths
 const TEMPLATES_DIR = path.join(__dirname, '../../docs/_templates');
-const AI_TEMPLATES_DIR = path.join(__dirname, '../../@claude-code');
+const FALLBACK_TEMPLATES_DIR = path.join(__dirname, '../../docs/_templates/fallback');
 const OUTPUT_DIR = path.join(__dirname, '../../docs/generated');
 
 /**
@@ -30,7 +30,7 @@ export async function generateDocument(
   try {
     // Determine paths
     const hbsTemplatePath = options.templatePath || path.join(TEMPLATES_DIR, `${type}.hbs`);
-    const aiTemplatePath = path.join(AI_TEMPLATES_DIR, `ai-${type}.md`);
+    const fallbackTemplatePath = path.join(FALLBACK_TEMPLATES_DIR, `${type}.md`);
     const outputPath = options.outputPath || path.join(OUTPUT_DIR, `${projectInfo.name.toLowerCase().replace(/\s+/g, '-')}-${type}.md`);
     
     // Ensure output directory exists
@@ -83,31 +83,35 @@ export async function generateDocument(
         console.log(`✅ Using Handlebars template for ${type.toUpperCase()}`);
       } catch (error) {
         console.error(`Error using Handlebars template for ${type.toUpperCase()}:`, error instanceof Error ? error.message : String(error));
-        // Fallback to AI template
-        if (fs.existsSync(aiTemplatePath)) {
-          content = fs.readFileSync(aiTemplatePath, 'utf8');
-          console.log(`⚠️ Falling back to AI template for ${type.toUpperCase()}`);
+        // Check for fallback template
+        if (fs.existsSync(fallbackTemplatePath)) {
+          content = fs.readFileSync(fallbackTemplatePath, 'utf8');
+          console.log(`⚠️ Falling back to simple template for ${type.toUpperCase()}`);
         } else {
-          throw new Error(`No suitable template found for ${type.toUpperCase()}`);
+          // Create a basic template if fallback doesn't exist
+          content = createBasicTemplate(type, projectInfo);
+          console.log(`⚠️ Creating basic template for ${type.toUpperCase()}`);
         }
       }
-    } else if (fs.existsSync(aiTemplatePath)) {
-      // Use the AI template
-      content = fs.readFileSync(aiTemplatePath, 'utf8');
-      console.log(`✅ Using AI template for ${type.toUpperCase()}`);
+    } else if (fs.existsSync(fallbackTemplatePath)) {
+      // Use the fallback template
+      content = fs.readFileSync(fallbackTemplatePath, 'utf8');
+      console.log(`✅ Using fallback template for ${type.toUpperCase()}`);
     } else {
-      throw new Error(`No template found for ${type.toUpperCase()}`);
+      // Create a basic template if no templates exist
+      content = createBasicTemplate(type, projectInfo);
+      console.log(`⚠️ Creating basic template for ${type.toUpperCase()}`);
     }
     
     // Simple template variable replacement for non-Handlebars templates
-    if (content && fs.existsSync(aiTemplatePath)) {
+    if (content) {
       content = content.replace(/PROJ-001/g, projectInfo.id);
       content = content.replace(/Documentation Template System/g, projectInfo.name);
       content = content.replace(/2025-03-05/g, projectInfo.created.split('T')[0]);
     }
     
     // Enhance documentation with LLM if available and requested
-    if ((options.enhanceWithLLM !== false) && llmUtil.isLLMAvailable()) {
+    if ((options.enhanceWithLLM !== false) && llmUtil.isLLMApiAvailable()) {
       console.log(`🧠 Enhancing ${type.toUpperCase()} document with AI...`);
       try {
         content = await llmUtil.enhanceDocumentation(content, projectInfo, type);
@@ -461,4 +465,59 @@ function createTemplateData(
     default:
       return baseData;
   }
+}
+
+/**
+ * Create a basic template for a document type when no template exists
+ */
+function createBasicTemplate(type: string, projectInfo: ProjectInfo): string {
+  const today = new Date().toISOString().split('T')[0];
+  const docTypeMap: Record<string, string> = {
+    'prd': 'Product Requirements Document',
+    'srs': 'Software Requirements Specification',
+    'sad': 'System Architecture Document',
+    'sdd': 'Software Design Document',
+    'stp': 'Software Test Plan',
+    'swift-sdd': 'Swift Software Design Document'
+  };
+  
+  const docTitle = docTypeMap[type] || `${type.toUpperCase()} Document`;
+  
+  return `---
+documentType: "${type.toUpperCase()}"
+schemaVersion: "1.0.0"
+documentVersion: "1.0.0"
+lastUpdated: "${today}"
+status: "DRAFT"
+id: "DOC-${type.toUpperCase()}-001"
+project:
+  id: "${projectInfo.id}"
+  name: "${projectInfo.name}"
+---
+
+# ${projectInfo.name} ${docTitle}
+
+## 1. DOCUMENT CONTROL
+
+### 1.1. REVISION HISTORY
+
+| VERSION | DATE | DESCRIPTION | AUTHOR |
+|---------|------|-------------|--------|
+| 1.0.0   | ${today} | Initial draft | DocGen |
+
+## 2. INTRODUCTION
+
+### 2.1. PURPOSE
+
+This document describes the ${docTitle.toLowerCase()} for ${projectInfo.name}.
+
+### 2.2. SCOPE
+
+${projectInfo.description}
+
+## 3. OVERVIEW
+
+*This is a basic template created automatically by DocGen. Please customize it according to your project's needs.*
+
+`;
 }

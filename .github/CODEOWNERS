@@ -2,15 +2,14 @@
 # See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # Default owners for everything in the repo
-* @yourusername
+* @mprestonsparks
 
 # Documentation template owners
-/docs/_templates/ @yourusername
-/@claude-code/ @yourusername
+/docs/_templates/ @mprestonsparks
 
 # Core scripts owners
-/scripts/ @yourusername
-/src/ @yourusername
+/scripts/ @mprestonsparks
+/src/ @mprestonsparks
 
 # Configuration owners
-/config/ @yourusername
+/config/ @mprestonsparks

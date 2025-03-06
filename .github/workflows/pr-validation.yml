@@ -24,10 +24,25 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '16'
-          cache: 'npm'
+          # Only enable cache if lock file exists
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
       
-      - name: Install dependencies
+      - name: Check for lock file
+        id: check_files
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "::set-output name=lockfile_exists::true"
+          else
+            echo "::set-output name=lockfile_exists::false"
+          fi
+      
+      - name: Install dependencies (with lock file)
+        if: steps.check_files.outputs.lockfile_exists == 'true'
         run: npm ci
+        
+      - name: Install dependencies (without lock file)
+        if: steps.check_files.outputs.lockfile_exists != 'true'
+        run: npm install
       
       - name: Run tests with coverage
         run: npm test -- --coverage
@@ -73,10 +88,25 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '16'
-          cache: 'npm'
+          # Only enable cache if lock file exists
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
       
-      - name: Install dependencies
+      - name: Check for lock file
+        id: check_files
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "::set-output name=lockfile_exists::true"
+          else
+            echo "::set-output name=lockfile_exists::false"
+          fi
+      
+      - name: Install dependencies (with lock file)
+        if: steps.check_files.outputs.lockfile_exists == 'true'
         run: npm ci
+        
+      - name: Install dependencies (without lock file)
+        if: steps.check_files.outputs.lockfile_exists != 'true'
+        run: npm install
       
       - name: Validate documentation
         run: npm run validate

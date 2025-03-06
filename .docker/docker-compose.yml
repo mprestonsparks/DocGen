@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  docgen:
+    build:
+      context: ..
+      dockerfile: .docker/Dockerfile
+    volumes:
+      - ..:/app
+      - node_modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+      # Add other environment variables as needed
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    # Uncomment if you need to expose a port
+    # ports:
+    #   - "3000:3000"
+    tty: true
+    stdin_open: true
+
+volumes:
+  node_modules:

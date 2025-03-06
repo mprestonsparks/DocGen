@@ -57,7 +57,7 @@ describe('Document Structure Tests', () => {
         }
       } catch (err) {
         // If template doesn't exist or can't be read, we'll skip this test
-        console.log(`Skipping template validation for ${type}: ${err.message}`);
+        console.log(`Skipping template validation for ${type}: ${(err as Error).message}`);
       }
     });
   });
@@ -95,7 +95,7 @@ describe('Script Tests', () => {
         
         expect(isExecutable).toBe(true);
       } catch (err) {
-        console.log(`Error checking executability for ${scriptPath}: ${err.message}`);
+        console.log(`Error checking executability for ${scriptPath}: ${(err as Error).message}`);
         // Skip test if file can't be read
       }
     });

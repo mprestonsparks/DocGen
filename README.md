@@ -1,33 +1,87 @@
-You are tasked with developing DocGen, a system for generating AI-optimized documentation using machine-readable templates. Review the provided documentation and implement the system according to these specifications:
+# DocGen
 
-Priority Documents (AI-Optimized Templates):
-1. ai-prd.md - Product Requirements Document
-2. ai-sad.md - System Architecture Document
-3. ai-srs.md - Software Requirements Specification
-4. ai-sdd.md - Software Design Document
-5. ai-stp.md - Software Test Plan
+[![Documentation CI](https://github.com/yourusername/DocGen/actions/workflows/docs-ci.yml/badge.svg)](https://github.com/yourusername/DocGen/actions/workflows/docs-ci.yml)
 
-These AI-optimized templates define the core structure and requirements using machine-readable formats with:
-- Explicit YAML metadata headers
-- JSON-structured content blocks
-- Formal cross-referencing with unique IDs
-- Traceability matrices
-- Schema validation rules
+A powerful documentation generation system for software projects, featuring AI-powered interviews and machine-readable templates.
 
-Additional context is available in the numbered documentation files (01-* through 09-*), but the AI-optimized templates should take precedence in case of any conflicts.
+## Features
 
-Key Implementation Requirements:
-1. Follow the directory structure defined in ai-sad.md
-2. Implement all interfaces and components as specified
-3. Ensure strict adherence to version requirements in ai-prd.md
-4. Follow test coverage requirements from ai-stp.md
-5. Maintain all cross-references and traceability defined in the templates
+- **Interactive Interview System**: AI-powered CLI interview gathers project details
+- **Machine-Readable Templates**: YAML metadata + Markdown content for structured docs
+- **Swift Integration**: First-class support for Swift/iOS projects
+- **Multi-language Support**: Planned support for many programming languages
+- **Validation System**: Ensures document completeness and cross-references
+- **Version Management**: Synchronizes document versions
 
-Development Priorities:
-1. Machine-readable document generation
-2. Schema validation and consistency checking
-3. Cross-reference integrity
-4. AI agent compatibility
-5. Performance optimization
+## Installation
 
-Please proceed with implementation, starting with the core template repository structure and basic document generation functionality.
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/DocGen.git
+cd DocGen
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+## Usage
+
+### Interview Mode
+
+Start the interactive interview to generate documentation:
+
+```bash
+# Using JavaScript implementation
+npm run interview
+
+# Using TypeScript implementation
+npm run interview:ts
+```
+
+### Validation
+
+Validate your documentation:
+
+```bash
+npm run validate
+```
+
+### Other Commands
+
+```bash
+# Generate documentation reports
+npm run generate-reports
+
+# Update document versions (patch, minor, major)
+npm run update-versions patch
+
+# Run tests
+npm test
+```
+
+## GitHub CLI Integration
+
+DocGen works seamlessly with GitHub CLI:
+
+```bash
+# Create a new project from DocGen template
+gh repo create my-project-docs --template yourusername/docgen
+
+# Run workflows
+gh workflow run docs-ci.yml
+
+# Release documentation (prompts for version type)
+gh workflow run release-docs.yml
+```
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.

@@ -1,0 +1,49 @@
+name: PR Documentation Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'docs/**/*.md'
+      - '@claude-code/**/*.md'
+      - 'docs/_templates/**/*.hbs'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Validate documentation
+        run: npm run validate
+      
+      - name: Report validation issues
+        uses: actions/github-script@v6
+        if: ${{ failure() }}
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const report = JSON.parse(fs.readFileSync('docs/reports/validation.json', 'utf8'));
+              const issues = report.issues || [];
+              if (issues.length > 0) {
+                const issueBody = issues.map(i => `- **${i.severity}**: ${i.message} in ${i.file}`).join('\n');
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `## Documentation Validation Failed\n\n${issueBody}`
+                });
+              }
+            } catch (error) {
+              console.error('Error reading validation report:', error);
+            }

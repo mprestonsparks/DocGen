@@ -1,0 +1,40 @@
+name: Validate Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**/*.md'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**/*.md'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Validate documentation
+      run: npm run validate
+      
+    - name: Generate reports
+      run: npm run generate-reports
+      
+    - name: Archive documentation reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation-reports
+        path: docs/reports/

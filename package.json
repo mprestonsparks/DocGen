@@ -38,7 +38,7 @@
     "commander": "^9.4.1",
     "dotenv": "^16.4.7",
     "handlebars": "^4.7.7",
-    "inquirer": "^8.2.5",
+    "inquirer": "^12.4.3",
     "js-yaml": "^4.1.0",
     "semver": "^7.5.4",
     "winston": "^3.17.0"

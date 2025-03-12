@@ -19,18 +19,25 @@ if (global.SKIP_PROBLEMATIC_TESTS) {
   };
 }
 
-// Mock getLogger function globally to prevent errors
+// Automatically mock the getLogger function with a fake logger instance
 jest.mock('../src/utils/logger', () => {
   const originalModule = jest.requireActual('../src/utils/logger');
   
+  // Create a mock logger factory function
+  const mockLogger = {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    verbose: jest.fn(),
+    child: jest.fn(() => mockLogger)
+  };
+  
+  // Return a modified module that includes our mock getLogger function
   return {
     ...originalModule,
-    getLogger: jest.fn(() => ({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-      verbose: jest.fn()
-    }))
+    getLogger: jest.fn().mockImplementation(() => mockLogger),
+    // Also export the mock logger instance for convenience in tests
+    mockLogger: mockLogger
   };
 });

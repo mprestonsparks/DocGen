@@ -2,6 +2,11 @@
  * Tests for validateSchemaVersionCompatibility function from src/index.ts
  */
 
+// Mock project-analyzer to avoid issues with logger.getLogger 
+jest.mock('../src/utils/project-analyzer', () => 
+  require('./mocks/project-analyzer.mock.js')
+);
+
 // Mock dotenv
 jest.mock('dotenv', () => ({
   config: jest.fn()

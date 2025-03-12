@@ -8,8 +8,9 @@ if (global.SKIP_PROBLEMATIC_TESTS) {
   
   // Override the global describe function to conditionally skip tests
   global.describe = (name, fn) => {
-    if (name === 'Project Analyzer') {
-      // If we have failing analyzer tests, conditionally mark as skipped
+    // We've fixed the Project Analyzer tests, so let them run
+    if (name === 'BROKEN_TEST_EXAMPLE') {
+      // If we have failing tests, conditionally mark as skipped
       originalDescribe.skip(name, fn);
     } else {
       // Otherwise run the test as normal

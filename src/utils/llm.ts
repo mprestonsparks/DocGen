@@ -264,6 +264,135 @@ Return the complete enhanced document.
 };
 
 /**
+ * Generate follow-up questions for an existing project
+ * @param projectInfo The project information
+ * @param analysisContext The analysis context from the project analyzer
+ * @param interviewAnswers The interview answers
+ * @returns The follow-up questions
+ */
+export const generateFollowUpQuestionsForExistingProject = async (
+  projectInfo: ProjectInfo,
+  analysisContext: {
+    projectType: string;
+    languages: string;
+    frameworks: string;
+    existingDocs: string;
+  },
+  interviewAnswers: InterviewAnswers
+): Promise<string[]> => {
+  const prompt = `
+Based on the following project information, analysis results, and interview answers, please generate 3-5 follow-up questions
+that would help gather more detailed information for generating comprehensive documentation for an EXISTING project.
+
+Project Name: ${projectInfo.name}
+Project Description: ${projectInfo.description}
+Project Type: ${projectInfo.type}
+
+Project Analysis Results:
+- Detected Project Type: ${analysisContext.projectType}
+- Languages: ${analysisContext.languages}
+- Frameworks: ${analysisContext.frameworks}
+- Existing Documentation: ${analysisContext.existingDocs}
+
+Interview answers so far:
+${Object.entries(interviewAnswers)
+  .map(([question, answer]) => `Q: ${question}\nA: ${answer}`)
+  .join('\n\n')}
+
+Generate questions that would help clarify:
+1. How new documentation should integrate with existing documentation
+2. Specific areas where current documentation is lacking
+3. Technical details that would be important to document
+4. Project-specific challenges that documentation should address
+5. Documentation priorities based on the current state of the project
+
+Format the questions as a simple list, one per line, without numbering.
+`;
+
+  try {
+    const response = await callLLM(prompt);
+    
+    // Split the response into lines and filter out empty lines
+    const questions = response.content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0 && line.includes('?'));
+    
+    // Limit to at most 5 questions
+    return questions.slice(0, 5);
+  } catch (error) {
+    logger.error('Error generating follow-up questions for existing project', { error, projectInfo });
+    return [
+      'What are the most important aspects of the project that need better documentation?',
+      'How should new documentation integrate with existing documentation?',
+      'Are there specific areas where the current documentation is lacking?',
+      'What documentation formats would be most useful for your team?',
+      'Are there specific standards or conventions you want to follow in the documentation?'
+    ];
+  }
+};
+
+/**
+ * Recommend technologies with context from detected technologies
+ * @param projectInfo The project information
+ * @param detectedTech The detected technologies
+ * @returns The recommended technologies
+ */
+export const recommendTechnologiesWithContext = async (
+  projectInfo: ProjectInfo,
+  detectedTech: string[]
+): Promise<TechStackRecommendations> => {
+  const prompt = `
+I need additional technology stack recommendations for an existing project with the following details:
+
+Project Name: ${projectInfo.name}
+Project Description: ${projectInfo.description}
+Project Type: ${projectInfo.type}
+
+Detected Technologies:
+${detectedTech.map(tech => `- ${tech}`).join('\n')}
+
+Based on these detected technologies, please suggest complementary or additional technologies that would work well with the existing stack.
+Consider modern alternatives or enhancements that might benefit the project.
+
+Please provide recommendations in the following categories:
+1. Frontend technologies
+2. Backend technologies
+3. Database technologies
+4. DevOps tools and platforms
+
+For each recommendation, explain briefly why it would complement the existing technology stack.
+Format your response as JSON with the following structure:
+{
+  "frontend": ["Technology1", "Technology2"],
+  "backend": ["Technology1", "Technology2"],
+  "database": ["Technology1"],
+  "devops": ["Technology1", "Technology2"]
+}
+`;
+
+  try {
+    const response = await callLLM(prompt);
+    
+    // Extract the JSON from the response
+    const jsonMatch = response.content.match(/```json\n([\s\S]*?)\n```/) || 
+                       response.content.match(/```\n([\s\S]*?)\n```/) ||
+                       response.content.match(/({[\s\S]*})/);
+    
+    if (jsonMatch && jsonMatch[1]) {
+      const recommendations = JSON.parse(jsonMatch[1]) as TechStackRecommendations;
+      return recommendations;
+    }
+    
+    logger.warn('Could not parse LLM response as JSON for technology recommendations', { response: response.content });
+    throw new Error('Could not parse LLM response as JSON');
+  } catch (error) {
+    logger.error('Error recommending technologies with context', { error, projectInfo });
+    throw new Error(`Error recommending technologies with context: ${error instanceof Error ? error.message : String(error)}`);
+  }
+};
+
+/**
  * Check if the LLM is available
  * @returns Whether the LLM is available
  */

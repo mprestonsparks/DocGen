@@ -62,6 +62,51 @@ export interface InterviewAnswers {
 }
 
 /**
+ * Project analysis result
+ */
+export interface ProjectAnalysisResult {
+  detectedType: ProjectType;
+  languages: {
+    name: string;
+    percentage: number;
+    files: number;
+  }[];
+  frameworks: string[];
+  buildTools: string[];
+  detectedComponents: {
+    name: string;
+    path: string;
+    type: string;
+    relationships: Array<{
+      targetComponent: string;
+      relationType: 'imports' | 'extends' | 'implements' | 'uses';
+    }>;
+  }[];
+  existingDocumentation: {
+    path: string;
+    type: string;
+    lastModified: string;
+    schemaCompliant: boolean;
+  }[];
+  repositoryInfo?: {
+    type: string;
+    remoteUrl?: string;
+    branch?: string;
+  };
+}
+
+/**
+ * Existing project options
+ */
+export interface ExistingProjectOptions {
+  path: string;
+  analysisDepth: 'basic' | 'standard' | 'deep';
+  outputDirectory: string;
+  preserveExisting: boolean;
+  generateIntegrationGuide: boolean;
+}
+
+/**
  * Session data
  */
 export interface SessionData {
@@ -70,6 +115,11 @@ export interface SessionData {
   documentationNeeds?: DocumentationNeeds;
   interviewAnswers: InterviewAnswers;
   _lastUpdated?: string;
+  existingProject?: {
+    path: string;
+    analysis: ProjectAnalysisResult;
+    options: ExistingProjectOptions;
+  };
 }
 
 /**

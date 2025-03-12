@@ -5,11 +5,14 @@ on:
     branches: [ main, develop ]
     paths:
       - 'docs/**/*.md'
+      - 'docs/_templates/**/*.hbs'
       - 'scripts/**/*.js'
       - 'scripts/**/*.ts'
       - 'src/**/*.ts'
-      - 'test/**/*.js'
-      - 'test/**/*.ts'
+      - 'tests/**/*.js'
+      - 'tests/**/*.ts'
+      - 'config/**/*.yaml'
+      - 'config/**/*.json'
   pull_request:
     branches: [ main, develop ]
   workflow_dispatch:

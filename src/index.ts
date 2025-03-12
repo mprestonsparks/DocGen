@@ -17,6 +17,7 @@ import * as llm from './utils/llm';
 import * as session from './utils/session';
 import * as validation from './utils/validation';
 import * as logger from './utils/logger';
+import * as projectAnalyzer from './utils/project-analyzer';
 
 // Import types
 import {
@@ -25,8 +26,10 @@ import {
   DocumentationNeeds,
   InterviewAnswers,
   ProjectDefaults,
-  ProjectType
-  // SessionData - removed unused import
+  ProjectType,
+  ExistingProjectOptions,
+  SessionData,
+  ProjectAnalysisResult
 } from './types';
 
 // Set up command line arguments
@@ -42,8 +45,15 @@ program
   .option('-l, --list', 'List available interview sessions')
   .option('-t, --type <projectType>', 'Specify the project type (WEB, MOBILE, API, DESKTOP, OTHER)')
   .option('-n, --name <projectName>', 'Specify the project name')
+  .option('-e, --existing-project <path>', 'Path to existing project root directory')
+  .option('-a, --analysis-depth <depth>', 'Analysis depth for existing project (basic, standard, deep)')
+  .option('-o, --output-dir <path>', 'Custom output directory for generated docs')
   .action(async (options) => {
-    await conductInterview(options);
+    if (options.existingProject) {
+      await conductExistingProjectInterview(options);
+    } else {
+      await conductInterview(options);
+    }
   });
 
 // Validate command
@@ -659,6 +669,1021 @@ async function generateDocumentation(
   
   // Generate all documents in parallel
   await Promise.all(generationPromises);
+}
+
+/**
+ * Conduct interview for an existing project
+ */
+async function conductExistingProjectInterview(options: {
+  existingProject: string;
+  analysisDepth?: string;
+  outputDir?: string;
+  resume?: string;
+}): Promise<void> {
+  console.log('Starting DocGen Interactive Interview for Existing Project');
+  console.log('----------------------------------------------------');
+  
+  let sessionId: string | null = null;
+  let existingProject: {
+    path: string;
+    analysis: ProjectAnalysisResult;
+    options: ExistingProjectOptions;
+  } | null = null;
+  let projectInfo: ProjectInfo | null = null;
+  let techStack: TechStack | null = null;
+  let documentationNeeds: DocumentationNeeds | null = null;
+  let interviewAnswers: InterviewAnswers = {};
+  
+  // Handle session resumption
+  if (options.resume) {
+    try {
+      const sessionData = session.loadSession(options.resume);
+      
+      if (!sessionData.existingProject) {
+        console.error('❌ The resumed session is not for an existing project.');
+        return;
+      }
+      
+      existingProject = sessionData.existingProject;
+      projectInfo = sessionData.projectInfo || null;
+      techStack = sessionData.techStack || null;
+      documentationNeeds = sessionData.documentationNeeds || null;
+      interviewAnswers = sessionData.interviewAnswers || {};
+      sessionId = options.resume;
+      
+      console.log(`✅ Resumed session for existing project: ${projectInfo?.name || existingProject.path}`);
+      console.log(`Last updated: ${new Date(sessionData._lastUpdated || '').toLocaleString()}\n`);
+    } catch (error) {
+      console.error(`❌ Failed to resume session: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+  }
+  
+  // If we don't have an analysis yet, analyze the project
+  if (!existingProject) {
+    const projectPath = options.existingProject;
+    console.log(`Analyzing existing project at: ${projectPath}`);
+    
+    try {
+      // Get analysis depth from options or default to 'standard'
+      const analysisDepth = (options.analysisDepth || 'standard') as 'basic' | 'standard' | 'deep';
+      
+      // Analyze the project
+      const analysis = await projectAnalyzer.analyzeProject(projectPath, {
+        analysisDepth,
+        includeDotFiles: false,
+        maxFileSize: 10_485_760, // 10MB
+        includeNodeModules: false
+      });
+      
+      console.log('\n✅ Project analysis complete');
+      console.log(`Detected project type: ${analysis.detectedType}`);
+      console.log('Languages detected:');
+      analysis.languages.slice(0, 5).forEach(lang => {
+        console.log(`- ${lang.name}: ${lang.percentage}% (${lang.files} files)`);
+      });
+      
+      if (analysis.frameworks.length > 0) {
+        console.log('Frameworks detected:');
+        analysis.frameworks.forEach(framework => {
+          console.log(`- ${framework}`);
+        });
+      }
+      
+      if (analysis.existingDocumentation.length > 0) {
+        console.log('Existing documentation detected:');
+        analysis.existingDocumentation.forEach(doc => {
+          console.log(`- ${doc.path} (${doc.type})`);
+        });
+      }
+      
+      // Create existing project object
+      existingProject = {
+        path: projectPath,
+        analysis,
+        options: {
+          path: projectPath,
+          analysisDepth,
+          outputDirectory: options.outputDir || config.getExistingProjectDefaults().outputDirectory,
+          preserveExisting: true,
+          generateIntegrationGuide: true
+        }
+      };
+      
+      // Generate a session ID
+      sessionId = session.generateSessionId(`existing-${path.basename(projectPath)}`);
+    } catch (error) {
+      console.error(`❌ Error analyzing project: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+  }
+  
+  // Gather or validate project info
+  if (!projectInfo) {
+    // Pre-fill project info based on analysis
+    projectInfo = await gatherExistingProjectInfo(existingProject);
+    
+    // Save session after gathering basic info
+    session.saveSession(sessionId!, {
+      projectInfo,
+      existingProject,
+      interviewAnswers
+    });
+    
+    console.log(`✅ Session saved with ID: ${sessionId}`);
+    console.log(`You can resume this session later with:\nnpm run interview:ts -- --resume ${sessionId}\n`);
+  }
+  
+  // Recommend technology stack
+  if (!techStack) {
+    techStack = await recommendExistingTechnologyStack(projectInfo, existingProject);
+    
+    // Save session after tech stack
+    session.saveSession(sessionId!, {
+      projectInfo,
+      existingProject,
+      techStack,
+      interviewAnswers
+    });
+  }
+  
+  // Assess documentation needs
+  if (!documentationNeeds) {
+    documentationNeeds = await assessExistingDocumentationNeeds(projectInfo, techStack, existingProject);
+    
+    // Save session after documentation needs
+    session.saveSession(sessionId!, {
+      projectInfo,
+      existingProject,
+      techStack,
+      documentationNeeds,
+      interviewAnswers
+    });
+  }
+  
+  // Ask follow-up questions if LLM is available
+  if (llm.isLLMApiAvailable()) {
+    // Include data from the project analysis in the LLM context
+    const analysisContext = {
+      projectType: existingProject.analysis.detectedType,
+      languages: existingProject.analysis.languages.map(l => l.name).join(', '),
+      frameworks: existingProject.analysis.frameworks.join(', '),
+      existingDocs: existingProject.analysis.existingDocumentation.map(d => d.path).join(', ')
+    };
+    
+    const followUpQuestions = await llm.generateFollowUpQuestionsForExistingProject(
+      projectInfo, 
+      analysisContext,
+      interviewAnswers
+    );
+    
+    await askFollowUpQuestions(followUpQuestions, interviewAnswers);
+    
+    // Save session after follow-up questions
+    session.saveSession(sessionId!, {
+      projectInfo,
+      existingProject,
+      techStack,
+      documentationNeeds,
+      interviewAnswers
+    });
+  }
+  
+  // Ask about output directory
+  const outputDirQuestion = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'outputDirectory',
+      message: 'Where should the generated documentation be saved?',
+      default: existingProject.options.outputDirectory
+    }
+  ]);
+  
+  // Update output directory
+  existingProject.options.outputDirectory = outputDirQuestion.outputDirectory;
+  
+  // Ask about integration guide
+  const integrationGuideQuestion = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'generateIntegrationGuide',
+      message: 'Generate an integration guide to help combine new and existing documentation?',
+      default: true
+    }
+  ]);
+  
+  // Update integration guide option
+  existingProject.options.generateIntegrationGuide = integrationGuideQuestion.generateIntegrationGuide;
+  
+  // Save session before generating documentation
+  session.saveSession(sessionId!, {
+    projectInfo,
+    existingProject,
+    techStack,
+    documentationNeeds,
+    interviewAnswers
+  });
+  
+  console.log('\nGenerating documentation for existing project...');
+  await generateDocumentationForExistingProject(
+    projectInfo,
+    techStack,
+    documentationNeeds,
+    existingProject,
+    interviewAnswers
+  );
+  
+  console.log('\n✅ Interview complete!');
+  console.log(`Documentation templates have been generated in ${existingProject.options.outputDirectory}`);
+  console.log('Next steps:');
+  console.log('1. Review the generated templates');
+  console.log('2. Run "npm run validate" to check for completeness');
+  console.log('3. Integrate the generated documentation with your existing project documentation');
+}
+
+/**
+ * Gather project information for an existing project
+ */
+async function gatherExistingProjectInfo(
+  existingProject: {
+    path: string;
+    analysis: ProjectAnalysisResult;
+    options: ExistingProjectOptions;
+  }
+): Promise<ProjectInfo> {
+  console.log('\nGathering project information...');
+  
+  // Extract project name from directory name as default
+  const dirName = path.basename(existingProject.path);
+  const projectName = dirName.charAt(0).toUpperCase() + dirName.slice(1).replace(/[-_]/g, ' ');
+  
+  // Detect project type from analysis
+  const detectedType = existingProject.analysis.detectedType;
+  
+  // Prepare questions with smart defaults
+  const questions = [
+    {
+      type: 'input',
+      name: 'name',
+      message: 'Project Name:',
+      default: projectName,
+      validate: (input: string) => input.trim() ? true : 'Project name is required'
+    },
+    {
+      type: 'input',
+      name: 'description',
+      message: 'Brief Project Description:',
+      validate: (input: string) => input.trim() ? true : 'Project description is required'
+    },
+    {
+      type: 'list',
+      name: 'type',
+      message: 'Project Type:',
+      choices: ['WEB', 'MOBILE', 'API', 'DESKTOP', 'OTHER'],
+      default: detectedType
+    }
+  ];
+  
+  try {
+    const answers = await inquirer.prompt(questions);
+    
+    return {
+      name: answers.name,
+      description: answers.description,
+      type: answers.type as ProjectType,
+      id: `PROJ-${Math.floor(1000 + Math.random() * 9000)}`,
+      created: new Date().toISOString()
+    };
+  } catch (error) {
+    logger.error('Error gathering project information for existing project', { error });
+    throw new Error(`Error gathering project information: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Recommend technology stack for an existing project based on analysis
+ */
+async function recommendExistingTechnologyStack(
+  projectInfo: ProjectInfo,
+  existingProject: {
+    path: string;
+    analysis: ProjectAnalysisResult;
+    options: ExistingProjectOptions;
+  }
+): Promise<TechStack> {
+  console.log('\nAnalyzing existing technology stack...');
+  
+  // Extract detected technologies
+  const detectedFrameworks = existingProject.analysis.frameworks;
+  const detectedLanguages = existingProject.analysis.languages.map(lang => lang.name);
+  const detectedBuildTools = existingProject.analysis.buildTools;
+  
+  // Combine all detected technologies
+  const detectedTech = [
+    ...detectedFrameworks,
+    ...detectedLanguages.slice(0, 3), // Top 3 languages
+    ...detectedBuildTools
+  ];
+  
+  console.log('📝 Detected technologies:');
+  detectedTech.forEach(tech => {
+    console.log(`- ${tech}`);
+  });
+  
+  // Get additional recommendations from LLM if available
+  let recommendations;
+  if (llm.isLLMApiAvailable()) {
+    try {
+      // Get LLM recommendations with context from detected technologies
+      recommendations = await llm.recommendTechnologiesWithContext(
+        projectInfo,
+        detectedTech
+      );
+      
+      console.log('\n🧠 AI-powered additional recommendations:');
+      
+      // Display the recommendations by category
+      if (recommendations.frontend && recommendations.frontend.length > 0) {
+        console.log(`Frontend: ${recommendations.frontend.join(', ')}`);
+      }
+      
+      if (recommendations.backend && recommendations.backend.length > 0) {
+        console.log(`Backend: ${recommendations.backend.join(', ')}`);
+      }
+      
+      if (recommendations.database && recommendations.database.length > 0) {
+        console.log(`Database: ${recommendations.database.join(', ')}`);
+      }
+      
+      if (recommendations.devops && recommendations.devops.length > 0) {
+        console.log(`DevOps: ${recommendations.devops.join(', ')}`);
+      }
+    } catch (error) {
+      logger.error('Error getting AI recommendations for existing project', { error });
+      // Fall back to detected technologies
+      recommendations = null;
+    }
+  }
+  
+  // Combine detected and recommended technologies
+  const allTechnologies = new Set<string>();
+  
+  // Add detected technologies
+  detectedTech.forEach(tech => allTechnologies.add(tech));
+  
+  // Add AI recommendations if available
+  if (recommendations) {
+    Object.values(recommendations).flat().forEach(tech => {
+      if (tech) allTechnologies.add(tech as string);
+    });
+  }
+  
+  // Let the user select from all technologies
+  const techOptions = Array.from(allTechnologies);
+  
+  try {
+    const answers = await inquirer.prompt([
+      {
+        type: 'checkbox',
+        name: 'selectedTech',
+        message: 'Select technologies for your project:',
+        choices: techOptions.map(tech => ({ 
+          name: tech, 
+          checked: detectedTech.includes(tech) // Pre-check detected technologies
+        })),
+        validate: (input: string[]) => input.length > 0 ? true : 'Please select at least one technology'
+      }
+    ]);
+    
+    return {
+      recommended: Array.from(allTechnologies),
+      selected: answers.selectedTech
+    };
+  } catch (error) {
+    logger.error('Error selecting technologies for existing project', { error });
+    // Return detected technologies if there's an error
+    return {
+      recommended: Array.from(allTechnologies),
+      selected: detectedTech
+    };
+  }
+}
+
+/**
+ * Assess documentation needs for an existing project
+ */
+async function assessExistingDocumentationNeeds(
+  projectInfo: ProjectInfo,
+  techStack: TechStack,
+  existingProject: {
+    path: string;
+    analysis: ProjectAnalysisResult;
+    options: ExistingProjectOptions;
+  }
+): Promise<DocumentationNeeds> {
+  console.log('\nAssessing documentation needs for your existing project...');
+  
+  const projectDefaults = loadProjectDefaults();
+  
+  // Check existing documentation
+  const existingDocs = existingProject.analysis.existingDocumentation;
+  console.log('\nFound existing documentation:');
+  
+  if (existingDocs.length === 0) {
+    console.log('No documentation found in the project directory.');
+  } else {
+    existingDocs.forEach(doc => {
+      console.log(`- ${doc.path} (${doc.type})`);
+    });
+  }
+  
+  // Check which documentation types might already exist
+  const hasReadme = existingDocs.some(doc => doc.type === 'README');
+  const hasContributing = existingDocs.some(doc => doc.type === 'CONTRIBUTING');
+  const hasApiDocs = existingDocs.some(doc => doc.type === 'API');
+  
+  // Get recommended docs from project defaults
+  const projectType = projectInfo.type;
+  const defaultDocs = projectDefaults.project_types[projectType]?.recommended_docs || 
+                    projectDefaults.project_types.OTHER.recommended_docs;
+  
+  // Basic documentation needs with defaults based on what's missing
+  const documentationNeeds: DocumentationNeeds = {
+    prd: defaultDocs.includes('prd'),
+    srs: defaultDocs.includes('srs'),
+    sad: defaultDocs.includes('sad'),
+    sdd: defaultDocs.includes('sdd'),
+    stp: defaultDocs.includes('stp'),
+    additional: []
+  };
+  
+  // Add tech-specific documentation needs
+  if (techStack.selected.includes('React') || techStack.selected.includes('React Native')) {
+    documentationNeeds.additional.push('COMPONENT_LIBRARY');
+  }
+  
+  if (techStack.selected.includes('Express') || techStack.selected.includes('FastAPI') || 
+      techStack.selected.includes('Flask') || projectType === 'API') {
+    // Only suggest API documentation if it doesn't exist
+    if (!hasApiDocs) {
+      documentationNeeds.additional.push('API_DOCUMENTATION');
+    }
+  }
+  
+  if (techStack.selected.includes('Firebase') || techStack.selected.includes('MongoDB') || 
+      techStack.selected.includes('PostgreSQL') || techStack.selected.includes('MySQL')) {
+    documentationNeeds.additional.push('DATA_MODEL');
+  }
+  
+  // Allow user to select documentation types
+  const selectedDocs = await selectDocumentationTypesForExistingProject(
+    documentationNeeds,
+    existingDocs
+  );
+  
+  console.log('\nSelected documentation artifacts:');
+  if (selectedDocs.prd) console.log('- Product Requirements Document (PRD)');
+  if (selectedDocs.srs) console.log('- Software Requirements Specification (SRS)');
+  if (selectedDocs.sad) console.log('- System Architecture Document (SAD)');
+  if (selectedDocs.sdd) console.log('- Software Design Document (SDD)');
+  if (selectedDocs.stp) console.log('- Software Test Plan (STP)');
+  
+  if (selectedDocs.additional && selectedDocs.additional.length > 0) {
+    console.log('Additional selected documentation:');
+    selectedDocs.additional.forEach(doc => {
+      console.log(`- ${doc.replace(/_/g, ' ').toLowerCase()}`);
+    });
+  }
+  
+  return selectedDocs;
+}
+
+/**
+ * Let the user select documentation types for an existing project
+ */
+async function selectDocumentationTypesForExistingProject(
+  recommendations: DocumentationNeeds,
+  existingDocs: Array<{
+    path: string;
+    type: string;
+    lastModified: string;
+    schemaCompliant: boolean;
+  }>
+): Promise<DocumentationNeeds> {
+  // Create choices from recommendations with existing doc info
+  const existingDocTypes = existingDocs.map(doc => doc.type.toUpperCase());
+  
+  const coreDocChoices = [
+    { 
+      name: `Product Requirements Document (PRD)${existingDocTypes.includes('PRD') ? ' - EXISTS' : ''}`, 
+      value: 'prd', 
+      checked: recommendations.prd && !existingDocTypes.includes('PRD')
+    },
+    { 
+      name: `Software Requirements Specification (SRS)${existingDocTypes.includes('SRS') ? ' - EXISTS' : ''}`, 
+      value: 'srs', 
+      checked: recommendations.srs && !existingDocTypes.includes('SRS')
+    },
+    { 
+      name: `System Architecture Document (SAD)${existingDocTypes.includes('SAD') ? ' - EXISTS' : ''}`, 
+      value: 'sad', 
+      checked: recommendations.sad && !existingDocTypes.includes('SAD')
+    },
+    { 
+      name: `Software Design Document (SDD)${existingDocTypes.includes('SDD') ? ' - EXISTS' : ''}`, 
+      value: 'sdd', 
+      checked: recommendations.sdd && !existingDocTypes.includes('SDD')
+    },
+    { 
+      name: `Software Test Plan (STP)${existingDocTypes.includes('STP') ? ' - EXISTS' : ''}`, 
+      value: 'stp', 
+      checked: recommendations.stp && !existingDocTypes.includes('STP')
+    }
+  ];
+  
+  // Additional doc choices
+  const additionalDocChoices = recommendations.additional.map(doc => {
+    const exists = existingDocTypes.includes(doc);
+    return {
+      name: `${doc.replace(/_/g, ' ').toLowerCase()}${exists ? ' - EXISTS' : ''}`,
+      value: doc,
+      checked: !exists
+    };
+  });
+  
+  try {
+    // First select core documents
+    const coreDocsAnswer = await inquirer.prompt([
+      {
+        type: 'checkbox',
+        name: 'coreDocs',
+        message: 'Select core documentation types to generate:',
+        choices: coreDocChoices,
+        validate: (input: string[]) => true // Allow empty selection for existing projects
+      }
+    ]);
+    
+    // Then select additional documents if there are any
+    let additionalDocsAnswer = { additionalDocs: [] };
+    if (additionalDocChoices.length > 0) {
+      additionalDocsAnswer = await inquirer.prompt([
+        {
+          type: 'checkbox',
+          name: 'additionalDocs',
+          message: 'Select additional documentation types to generate:',
+          choices: additionalDocChoices
+        }
+      ]);
+    }
+    
+    // Convert from array of values to object structure
+    return {
+      prd: coreDocsAnswer.coreDocs.includes('prd'),
+      srs: coreDocsAnswer.coreDocs.includes('srs'),
+      sad: coreDocsAnswer.coreDocs.includes('sad'),
+      sdd: coreDocsAnswer.coreDocs.includes('sdd'),
+      stp: coreDocsAnswer.coreDocs.includes('stp'),
+      additional: additionalDocsAnswer.additionalDocs
+    };
+  } catch (error) {
+    logger.error('Error selecting documentation types for existing project', { error });
+    return recommendations; // Return the recommendations if there's an error
+  }
+}
+
+/**
+ * Generate documentation for an existing project
+ */
+async function generateDocumentationForExistingProject(
+  projectInfo: ProjectInfo,
+  techStack: TechStack,
+  documentationNeeds: DocumentationNeeds,
+  existingProject: {
+    path: string;
+    analysis: ProjectAnalysisResult;
+    options: ExistingProjectOptions;
+  },
+  interviewAnswers: InterviewAnswers
+): Promise<void> {
+  // Create output directory if it doesn't exist
+  const outputDir = config.getExistingProjectOutputDir(
+    existingProject.path,
+    existingProject.options.outputDirectory
+  );
+  
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+  
+  console.log(`Documentation will be generated in: ${outputDir}`);
+  
+  // Generate each document type
+  const generationPromises = [];
+  
+  // Generate core documents
+  if (documentationNeeds.prd) {
+    generationPromises.push(
+      generateDocumentForExistingProject('prd', projectInfo, techStack, interviewAnswers, outputDir)
+    );
+  }
+  
+  if (documentationNeeds.srs) {
+    generationPromises.push(
+      generateDocumentForExistingProject('srs', projectInfo, techStack, interviewAnswers, outputDir)
+    );
+  }
+  
+  if (documentationNeeds.sad) {
+    generationPromises.push(
+      generateDocumentForExistingProject('sad', projectInfo, techStack, interviewAnswers, outputDir)
+    );
+  }
+  
+  if (documentationNeeds.sdd) {
+    generationPromises.push(
+      generateDocumentForExistingProject('sdd', projectInfo, techStack, interviewAnswers, outputDir)
+    );
+  }
+  
+  if (documentationNeeds.stp) {
+    generationPromises.push(
+      generateDocumentForExistingProject('stp', projectInfo, techStack, interviewAnswers, outputDir)
+    );
+  }
+  
+  // Generate Swift-specific documentation if Swift is selected
+  if (techStack.selected.includes('Swift')) {
+    generationPromises.push(
+      generateDocumentForExistingProject('swift-sdd', projectInfo, techStack, interviewAnswers, outputDir)
+    );
+    console.log('📱 Detected Swift project, generating Swift-specific documentation...');
+  }
+  
+  // Generate integration guide if requested
+  if (existingProject.options.generateIntegrationGuide) {
+    generationPromises.push(generateIntegrationGuide(
+      projectInfo,
+      existingProject,
+      documentationNeeds,
+      outputDir
+    ));
+  }
+  
+  // Generate all documents in parallel
+  await Promise.all(generationPromises);
+}
+
+/**
+ * Generate integration guide for combining new and existing documentation
+ */
+async function generateIntegrationGuide(
+  projectInfo: ProjectInfo,
+  existingProject: {
+    path: string;
+    analysis: ProjectAnalysisResult;
+    options: ExistingProjectOptions;
+  },
+  documentationNeeds: DocumentationNeeds,
+  outputDir: string
+): Promise<void> {
+  console.log('Generating integration guide...');
+  
+  try {
+    // Check if we have a Handlebars template
+    const hbsTemplatePath = path.join(process.cwd(), `docs/_templates/integration-guide.hbs`);
+    const outputPath = path.join(outputDir, `integration-guide.md`);
+    
+    if (!fs.existsSync(hbsTemplatePath)) {
+      console.log('❌ Integration guide template not found. Skipping guide generation.');
+      return;
+    }
+    
+    // Import handlebars dynamically
+    const HandlebarsModule = await import('handlebars');
+    const Handlebars = HandlebarsModule.default;
+    
+    // Read the template
+    const templateSource = fs.readFileSync(hbsTemplatePath, 'utf8');
+    const template = Handlebars.compile(templateSource);
+    
+    // Build a list of generated documents
+    const generatedDocs = [];
+    
+    if (documentationNeeds.prd) {
+      generatedDocs.push({
+        title: 'Product Requirements Document',
+        path: `${outputDir}/prd.md`,
+        purpose: 'Defines the product features and requirements',
+        format: 'Markdown with YAML frontmatter',
+        sections: [
+          { heading: 'Introduction', description: 'Project overview and purpose' },
+          { heading: 'Features', description: 'Detailed product features' },
+          { heading: 'User Stories', description: 'Usage scenarios and user journeys' },
+          { heading: 'Requirements', description: 'Functional and non-functional requirements' }
+        ]
+      });
+    }
+    
+    if (documentationNeeds.srs) {
+      generatedDocs.push({
+        title: 'Software Requirements Specification',
+        path: `${outputDir}/srs.md`,
+        purpose: 'Detailed technical requirements for implementation',
+        format: 'Markdown with YAML frontmatter',
+        sections: [
+          { heading: 'Introduction', description: 'Document purpose and scope' },
+          { heading: 'Functional Requirements', description: 'Specific system behaviors' },
+          { heading: 'Non-functional Requirements', description: 'Performance, security, and other quality attributes' },
+          { heading: 'System Interfaces', description: 'Interfaces with external systems' }
+        ]
+      });
+    }
+    
+    if (documentationNeeds.sad) {
+      generatedDocs.push({
+        title: 'System Architecture Document',
+        path: `${outputDir}/sad.md`,
+        purpose: 'High-level system architecture and components',
+        format: 'Markdown with YAML frontmatter',
+        sections: [
+          { heading: 'Architecture Overview', description: 'Architectural approach and patterns' },
+          { heading: 'System Components', description: 'Major system components and their interactions' },
+          { heading: 'Data Architecture', description: 'Data models and storage strategies' },
+          { heading: 'Integration Points', description: 'External system integrations' }
+        ]
+      });
+    }
+    
+    if (documentationNeeds.sdd) {
+      generatedDocs.push({
+        title: 'Software Design Document',
+        path: `${outputDir}/sdd.md`,
+        purpose: 'Detailed design including classes, interfaces, and algorithms',
+        format: 'Markdown with YAML frontmatter',
+        sections: [
+          { heading: 'Design Overview', description: 'Design approach and patterns' },
+          { heading: 'Component Design', description: 'Detailed component specifications' },
+          { heading: 'Interface Design', description: 'API and user interface designs' },
+          { heading: 'Data Design', description: 'Database schemas and data structures' }
+        ]
+      });
+    }
+    
+    if (documentationNeeds.stp) {
+      generatedDocs.push({
+        title: 'Software Test Plan',
+        path: `${outputDir}/stp.md`,
+        purpose: 'Test strategy, cases, and validation approach',
+        format: 'Markdown with YAML frontmatter',
+        sections: [
+          { heading: 'Test Strategy', description: 'Overall testing approach' },
+          { heading: 'Test Cases', description: 'Specific test scenarios' },
+          { heading: 'Test Environment', description: 'Testing infrastructure and tools' },
+          { heading: 'Test Schedule', description: 'Timeline for testing activities' }
+        ]
+      });
+    }
+    
+    // Prepare template data
+    const templateData = {
+      projectName: projectInfo.name,
+      outputDirectory: path.relative(existingProject.path, outputDir),
+      lastUpdated: new Date().toISOString(),
+      documents: generatedDocs
+    };
+    
+    // Apply the template
+    const content = template(templateData);
+    
+    // Write to output file
+    fs.writeFileSync(outputPath, content);
+    console.log(`✅ Created integration guide at ${outputPath}`);
+  } catch (error) {
+    logger.error('Error generating integration guide', { error });
+    console.error(`❌ Error generating integration guide: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Generate a specific document for an existing project
+ */
+async function generateDocumentForExistingProject(
+  type: string,
+  projectInfo: ProjectInfo,
+  techStack: TechStack,
+  interviewAnswers: InterviewAnswers,
+  outputDir: string
+): Promise<void> {
+  console.log(`Generating ${type.toUpperCase()} document...`);
+  
+  try {
+    // First check if we have a Handlebars template
+    const projectDefaults = loadProjectDefaults();
+    const hbsTemplatePath = path.join(process.cwd(), `docs/_templates/${type}.hbs`);
+    const fallbackTemplatePath = path.join(process.cwd(), `docs/_templates/fallback/${type}.md`);
+    const outputPath = path.join(outputDir, `${projectInfo.name.toLowerCase().replace(/\s+/g, '-')}-${type}.md`);
+    
+    // Determine which template to use
+    let content;
+    
+    if (fs.existsSync(hbsTemplatePath)) {
+      // Use the Handlebars template
+      try {
+        // Import handlebars dynamically
+        const HandlebarsModule = await import('handlebars');
+        const Handlebars = HandlebarsModule.default;
+        
+        // Register some helper functions
+        Handlebars.registerHelper('padZero', function(num: number, digits: number) {
+          let result = String(num + 1);
+          while (result.length < digits) {
+            result = '0' + result;
+          }
+          return result;
+        });
+        
+        // Read the template
+        const templateSource = fs.readFileSync(hbsTemplatePath, 'utf8');
+        const template = Handlebars.compile(templateSource);
+        
+        // Use the same template data as the original function
+        // This can be enhanced later to include project-specific data from analysis
+        
+        // Create main features array from interview answers
+        const mainFeatures: string[] = [];
+        for (const [question, answer] of Object.entries(interviewAnswers)) {
+          if (question.toLowerCase().includes('feature') || question.toLowerCase().includes('functionality')) {
+            mainFeatures.push(answer);
+          }
+        }
+        
+        // Create target audience array from interview answers
+        const targetUsers: string[] = [];
+        for (const [question, answer] of Object.entries(interviewAnswers)) {
+          if (question.toLowerCase().includes('user') || question.toLowerCase().includes('audience')) {
+            targetUsers.push(answer);
+          }
+        }
+        
+        // Prepare template data with more information from the interview
+        const templateData = {
+          documentVersion: projectDefaults.document_versions[type] || '1.0.0',
+          lastUpdated: new Date().toISOString(),
+          status: projectDefaults.document_statuses[0] || 'DRAFT',
+          projectId: projectInfo.id,
+          projectName: projectInfo.name,
+          projectDescription: projectInfo.description,
+          authorId: 'AUTH001',
+          visionStatement: `Create a ${projectInfo.name} system that meets the needs of its users.`,
+          targetAudience: targetUsers.length > 0 ? targetUsers : ['DEVELOPERS', 'USERS', 'STAKEHOLDERS'],
+          systemScope: {
+            includes: ['CORE_FUNCTIONALITY', 'ESSENTIAL_FEATURES'],
+            excludes: ['FUTURE_ENHANCEMENTS', 'NICE_TO_HAVE_FEATURES']
+          },
+          definitions: [
+            { id: 'TERM001', term: 'SRS', definition: 'Software Requirements Specification', context: 'DOCUMENT_TYPE' },
+            { id: 'TERM002', term: 'API', definition: 'Application Programming Interface', context: 'TECHNOLOGY' }
+          ],
+          references: [
+            { id: 'REF001', title: 'Industry Best Practices', source: 'Standards Body', version: '2023', url: 'https://example.com/standards' }
+          ],
+          objectives: [
+            {
+              description: 'Implement core functionality',
+              target: 'Complete implementation',
+              measurement: 'FEATURE_COMPLETION'
+            },
+            {
+              description: 'Ensure system quality',
+              target: '95% test coverage',
+              measurement: 'TEST_COVERAGE'
+            }
+          ],
+          challenges: [
+            {
+              description: 'Technical complexity',
+              impact: 'HIGH',
+              stakeholders: ['DEVELOPERS', 'ARCHITECTS']
+            },
+            {
+              description: 'User adoption',
+              impact: 'MEDIUM',
+              stakeholders: ['USERS', 'PRODUCT_MANAGERS']
+            }
+          ],
+          components: [
+            {
+              name: 'Core Engine',
+              purpose: 'Provides main application logic',
+              features: mainFeatures.length > 0 ? mainFeatures : ['Feature 1', 'Feature 2', 'Feature 3'],
+              responsibilities: ['Data processing', 'Business logic'],
+              dependencies: ['Database', 'Authentication service'],
+              requirementsImplemented: ['FR-1.1', 'FR-1.2'],
+              classes: [
+                {
+                  name: 'CoreService',
+                  purpose: 'Main service for core functionality',
+                  properties: [
+                    { name: 'config', type: 'Configuration' },
+                    { name: 'logger', type: 'Logger' }
+                  ],
+                  methods: [
+                    { name: 'initialize' },
+                    { name: 'process' }
+                  ]
+                }
+              ],
+              interfaces: [
+                {
+                  name: 'ICoreService',
+                  methods: [
+                    { 
+                      returnType: 'void',
+                      name: 'initialize',
+                      parameters: []
+                    },
+                    {
+                      returnType: 'Result',
+                      name: 'process',
+                      parameters: [
+                        { type: 'Input', name: 'data' }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              name: 'User Interface',
+              purpose: 'Provides user-facing interactions',
+              features: ['UI Feature 1', 'UI Feature 2'],
+              responsibilities: ['User interaction', 'Data display'],
+              dependencies: ['Core Engine'],
+              requirementsImplemented: ['FR-2.1', 'FR-2.2']
+            }
+          ],
+          technologies: techStack.selected.map((tech, index) => ({
+            name: tech,
+            category: index === 0 ? 'FRONTEND' : (index === 1 ? 'BACKEND' : 'DATABASE'),
+            purpose: `Core ${index === 0 ? 'frontend' : (index === 1 ? 'backend' : 'data storage')} technology`
+          }))
+        };
+        
+        // Apply the template
+        content = template(templateData);
+        logger.info('Used Handlebars template for existing project', { type });
+      } catch (error) {
+        logger.error('Error using Handlebars template for existing project', { error, type });
+        // Check for fallback template
+        if (fs.existsSync(fallbackTemplatePath)) {
+          content = fs.readFileSync(fallbackTemplatePath, 'utf8');
+          logger.info('Falling back to simple template for existing project', { type });
+        } else {
+          // Create a basic template if fallback doesn't exist
+          content = createBasicTemplate(type, projectInfo);
+          logger.info('Creating basic template for existing project', { type });
+        }
+      }
+    } else if (fs.existsSync(fallbackTemplatePath)) {
+      // Use the fallback template
+      content = fs.readFileSync(fallbackTemplatePath, 'utf8');
+      logger.info('Using fallback template for existing project', { type });
+    } else {
+      // Create a basic template if no templates exist
+      content = createBasicTemplate(type, projectInfo);
+      logger.info('Creating basic template for existing project', { type });
+    }
+    
+    // Simple template variable replacement for non-Handlebars templates
+    if (content) {
+      content = content.replace(/PROJ-001/g, projectInfo.id);
+      content = content.replace(/Documentation Template System/g, projectInfo.name);
+      content = content.replace(/2025-03-05/g, projectInfo.created.split('T')[0]);
+    }
+    
+    // Enhance documentation with LLM if available
+    if (llm.isLLMApiAvailable() && config.isAIEnhancementEnabled()) {
+      console.log(`🧠 Enhancing ${type.toUpperCase()} document with AI...`);
+      try {
+        content = await llm.enhanceDocumentation(content, projectInfo, type, {
+          improveFormatting: true,
+          expandExplanations: true,
+          checkConsistency: true
+        });
+      } catch (error) {
+        logger.error('Error enhancing documentation with AI for existing project', { error, type });
+        // Continue with the non-enhanced version
+      }
+    }
+    
+    // Write to output file
+    fs.writeFileSync(outputPath, content);
+    logger.info('Created document for existing project', { type, outputPath });
+    console.log(`✅ Created ${type.toUpperCase()} at ${outputPath}`);
+  } catch (error) {
+    logger.error('Error generating document for existing project', { error, type });
+    console.error(`❌ Error generating ${type.toUpperCase()} document: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /**

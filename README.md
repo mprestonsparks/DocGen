@@ -25,6 +25,7 @@
 <!-- Custom Badges -->
 [![AI-Powered](https://img.shields.io/badge/AI-Powered-blue)](https://github.com/mprestonsparks/DocGen#ai-enhancement)
 [![Template System](https://img.shields.io/badge/Template-System-brightgreen)](https://github.com/mprestonsparks/DocGen#template-structure)
+[![Existing Project Support](https://img.shields.io/badge/Existing_Project-Support-orange)](https://github.com/mprestonsparks/DocGen#existing-project-support)
 [![Test Suite](https://img.shields.io/badge/Tests-308_passed-success)](https://github.com/mprestonsparks/DocGen/blob/main/tests/README.md)
 
 DocGen is a comprehensive documentation generation system designed to streamline the creation of high-quality software project documentation. Leveraging AI-powered interviews and structured templates, it guides developers through the documentation process while ensuring consistency, completeness, and cross-referencing integrity.
@@ -41,6 +42,7 @@ DocGen is a comprehensive documentation generation system designed to streamline
 
 - **🤖 Interactive Interview System**: AI-powered CLI interview gathers project details and creates tailored documentation
 - **📝 Machine-Readable Templates**: YAML metadata + Markdown content for structured, consistent documentation
+- **🔍 Existing Project Support**: Non-destructive analysis of existing projects to generate complementary documentation
 - **🍎 Swift Integration**: First-class support for Swift/iOS projects with specialized templates
 - **🌐 Multi-language Support**: Planned support for many programming languages and frameworks
 - **✅ Validation System**: Ensures document completeness and cross-references for technical accuracy
@@ -68,7 +70,7 @@ DocGen is a comprehensive documentation generation system designed to streamline
 gh repo create my-project-docs --template mprestonsparks/DocGen
 
 # Clone your new repository
-git clone https://github.com/your-username/my-project-docs.git
+git clone https://github.com/mprestonsparks/my-project-docs.git
 cd my-project-docs
 
 # Install dependencies
@@ -111,6 +113,32 @@ DocGen uses an interactive interview process to gather project information:
 
 4. Review and customize the generated documents according to your specific needs.
 
+### Existing Project Support {#existing-project-support}
+
+DocGen can analyze existing projects to generate documentation that complements your codebase:
+
+1. Start the interview with an existing project:
+   ```bash
+   npm run interview -- --existing-project ./path/to/your/project
+   ```
+
+2. DocGen will analyze your project structure, detect languages, frameworks, and existing documentation.
+
+3. Answer the interview questions with pre-filled smart defaults based on the analysis.
+
+4. The system will generate documentation in an isolated directory, ensuring no existing files are modified.
+
+5. An integration guide will be provided to help combine DocGen output with your existing documentation.
+
+Features:
+- Non-destructive analysis and generation
+- Technology and framework detection
+- Smart defaults based on project analysis
+- Isolated output to avoid conflicts
+- Integration guidance for combining documentation
+
+For detailed usage instructions, see the [Existing Project Documentation](docs/existing-project/README.md).
+
 ### Key Commands
 
 ```bash
@@ -119,6 +147,9 @@ npm run interview
 
 # Start interview (TypeScript implementation - more features)
 npm run interview:ts
+
+# Start interview for existing project
+npm run interview -- --existing-project ./path/to/project
 
 # Validate documentation
 npm run validate
@@ -203,7 +234,9 @@ DocGen is designed to be extensible:
 
 1. **Custom Templates**: Add new templates in `docs/_templates/` using Handlebars (.hbs)
 2. **New Document Types**: Extend the system with specialized documents for your domain
-3. **Additional LLM Features**: Enhance the AI capabilities in `utils/llm.ts`
+3. **Project Analyzer**: Enhance project analysis in `utils/project-analyzer.ts` for better detection
+4. **Additional LLM Features**: Enhance the AI capabilities in `utils/llm.ts`
+5. **Integration Guides**: Customize integration templates in `docs/_templates/integration-guide.hbs`
 
 ## AI Enhancement
 
@@ -213,6 +246,12 @@ DocGen uses the Anthropic Claude API to provide intelligent documentation assist
 - Analyzes your project description to suggest appropriate tech stacks
 - Recommends technologies based on project type (web, mobile, API, etc.)
 - Provides tailored suggestions for front-end, back-end, and database technologies
+
+### 📊 Existing Project Analysis
+- Detects programming languages, frameworks, and libraries in your codebase
+- Identifies component relationships and architecture patterns
+- Discovers existing documentation and analyzes its structure
+- Generates smart defaults for the interview process based on analysis
 
 ### 🔍 Context-Aware Interview
 - Generates targeted follow-up questions based on your previous answers
@@ -244,6 +283,7 @@ If you encounter issues while using DocGen, here are some common problems and th
 | AI features not working | • Confirm `ANTHROPIC_API_KEY` is set in `.env` file <br> • Check your API key hasn't expired <br> • Verify network connectivity to Anthropic API |
 | Docker container issues | • Run `docker-compose logs` to view error messages <br> • Ensure Docker and Docker Compose are installed <br> • Try rebuilding with `npm run docker:build` |
 | Validation errors | • Check document cross-references match expected format <br> • Verify all required metadata fields are present <br> • Make sure document structure follows the template |
+| Existing project analysis | • Verify project path is correct <br> • Try running with `--analysis-depth basic` <br> • Check for read permissions on project files |
 | Test failures | • Run `npm test -- --verbose` for detailed error messages <br> • Check test logs for specific assertion failures <br> • Verify environment setup matches test requirements |
 
 ## License

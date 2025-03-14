@@ -3,12 +3,10 @@
  * 
  * These tests simulate an actual workflow from paper to code implementation.
  * 
- * Note: These tests are marked with .skip by default as they require:
+ * Note: These tests are skipped by default as they require:
  * 1. A running GROBID server
  * 2. An actual paper PDF file
  * 3. Real file system operations
- * 
- * They can be enabled for local testing by removing the .skip
  */
 
 import * as fs from 'fs';
@@ -20,20 +18,24 @@ import * as paperArchitect from '../src/paper_architect';
 const testPaperPath = process.env.TEST_PAPER_PATH || path.join(__dirname, 'fixtures/test-paper.pdf');
 const outputDir = path.join(__dirname, 'e2e-test-output');
 
-describe.skip('paper_architect end-to-end', () => {
+// Skip all tests in this file
+const runE2ETests = process.env.RUN_E2E_TESTS === 'true';
+const testOrSkip = runE2ETests ? test : test.skip;
+
+describe('paper_architect end-to-end', () => {
   let sessionId: string;
   
   // Set up test environment
   beforeAll(() => {
     // Create test output directory if it doesn't exist
-    if (!fs.existsSync(outputDir)) {
+    if (\!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
     
     // Check if test paper exists or create a dummy one
-    if (!fs.existsSync(testPaperPath)) {
+    if (\!fs.existsSync(testPaperPath)) {
       const fixturesDir = path.dirname(testPaperPath);
-      if (!fs.existsSync(fixturesDir)) {
+      if (\!fs.existsSync(fixturesDir)) {
         fs.mkdirSync(fixturesDir, { recursive: true });
       }
       fs.writeFileSync(testPaperPath, 'Mock PDF content for testing');
@@ -47,7 +49,7 @@ describe.skip('paper_architect end-to-end', () => {
     }
   });
 
-  it('should process a paper and generate all expected artifacts', async () => {
+  testOrSkip('should process a paper and generate all expected artifacts', async () => {
     // Process the paper
     sessionId = await paperArchitect.initializePaperImplementation(testPaperPath, {
       outputDirectory: outputDir,
@@ -70,7 +72,7 @@ describe.skip('paper_architect end-to-end', () => {
     expect(fs.existsSync(path.join(outputDir, 'executable_specs'))).toBe(true);
   });
   
-  it('should retrieve the paper content', () => {
+  testOrSkip('should retrieve the paper content', () => {
     const paperContent = paperArchitect.getPaperContent(sessionId);
     
     // Verify paper content structure
@@ -81,7 +83,7 @@ describe.skip('paper_architect end-to-end', () => {
     expect(Array.isArray(paperContent.sections)).toBe(true);
   });
   
-  it('should retrieve the knowledge model', () => {
+  testOrSkip('should retrieve the knowledge model', () => {
     const knowledgeGraph = paperArchitect.getKnowledgeModel(sessionId);
     
     // Verify knowledge graph structure
@@ -92,7 +94,7 @@ describe.skip('paper_architect end-to-end', () => {
     expect(Array.isArray(knowledgeGraph.relationships)).toBe(true);
   });
   
-  it('should retrieve the implementation plan', () => {
+  testOrSkip('should retrieve the implementation plan', () => {
     const plan = paperArchitect.getImplementationPlan(sessionId);
     
     // Verify implementation plan structure
@@ -102,7 +104,7 @@ describe.skip('paper_architect end-to-end', () => {
     expect(Array.isArray(plan.stages)).toBe(true);
   });
   
-  it('should update traceability with code elements', async () => {
+  testOrSkip('should update traceability with code elements', async () => {
     // Create a code mapping
     const codeMapping = [
       {
@@ -133,7 +135,7 @@ describe.skip('paper_architect end-to-end', () => {
     expect(addedCodeElement).toBeDefined();
   });
   
-  it('should generate a verification report', async () => {
+  testOrSkip('should generate a verification report', async () => {
     // Create test results
     const testResults = [
       {

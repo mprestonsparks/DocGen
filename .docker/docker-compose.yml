@@ -12,11 +12,28 @@ services:
       - NODE_ENV=development
       # Add other environment variables as needed
       # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    depends_on:
+      - grobid
     # Uncomment if you need to expose a port
     # ports:
     #   - "3000:3000"
     tty: true
     stdin_open: true
 
+  # GROBID service for paper_architect module
+  grobid:
+    image: grobid/grobid:0.7.2
+    ports:
+      - "8070:8070"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8070/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - grobid_data:/opt/grobid/grobid-home/tmp
+
 volumes:
   node_modules:
+  grobid_data:

@@ -190,7 +190,8 @@ const mockCodeMapping = [
   }
 ];
 
-// Mock logger and llm to avoid external dependencies
+
+// Logger and LLM mocks need to be defined first
 jest.mock('../src/utils/logger', () => ({
   info: jest.fn(),
   error: jest.fn(),
@@ -203,7 +204,7 @@ jest.mock('../src/utils/llm', () => ({
   query: jest.fn()
 }));
 
-// Mock fs functions
+// FS module mock must be defined first
 jest.mock('fs', () => ({
   ...jest.requireActual('fs'),
   existsSync: jest.fn().mockReturnValue(true),

@@ -76,10 +76,16 @@ const mockKnowledgeGraph = {
   }))
 };
 
-describe.skip('paper_architect performance', () => {
-  // Skip these tests in regular test runs - they're for benchmarking only
+// Conditionally run or skip tests based on environment
+const testOrSkip = process.env.RUN_PERF_TESTS === 'true' ? it : it.skip;
+
+describe('paper_architect performance', () => {
+  // Performance tests need longer timeouts
+  beforeAll(() => {
+    jest.setTimeout(30000); // Increase timeout for performance tests
+  });
   
-  it('should extract paper content within performance threshold', async () => {
+  testOrSkip('should extract paper content within performance threshold', async () => {
     // Mock the file reading to avoid actual PDF processing
     jest.spyOn(fs, 'readFileSync').mockReturnValue('Mock PDF content');
     jest.spyOn(fs, 'existsSync').mockReturnValue(true);
@@ -103,7 +109,7 @@ describe.skip('paper_architect performance', () => {
     }
   });
   
-  it('should generate knowledge model within performance threshold', async () => {
+  testOrSkip('should generate knowledge model within performance threshold', async () => {
     const startTime = Date.now();
     
     await knowledge.generateKnowledgeModel(mockPaperContent);
@@ -114,7 +120,7 @@ describe.skip('paper_architect performance', () => {
     expect(duration).toBeLessThan(PERF_THRESHOLDS.KNOWLEDGE);
   });
   
-  it('should generate specifications within performance threshold', async () => {
+  testOrSkip('should generate specifications within performance threshold', async () => {
     const startTime = Date.now();
     
     await specifications.generateExecutableSpecifications(
@@ -129,7 +135,7 @@ describe.skip('paper_architect performance', () => {
     expect(duration).toBeLessThan(PERF_THRESHOLDS.SPECIFICATIONS);
   });
   
-  it('should generate traceability matrix within performance threshold', () => {
+  testOrSkip('should generate traceability matrix within performance threshold', () => {
     const startTime = Date.now();
     
     traceability.generateInitialTraceabilityMatrix(mockPaperContent, mockKnowledgeGraph);
@@ -140,7 +146,7 @@ describe.skip('paper_architect performance', () => {
     expect(duration).toBeLessThan(PERF_THRESHOLDS.TRACEABILITY);
   });
   
-  it('should generate implementation plan within performance threshold', async () => {
+  testOrSkip('should generate implementation plan within performance threshold', async () => {
     const startTime = Date.now();
     
     await workflow.generateImplementationPlan(
@@ -155,7 +161,7 @@ describe.skip('paper_architect performance', () => {
     expect(duration).toBeLessThan(PERF_THRESHOLDS.WORKFLOW);
   });
   
-  it('should run the entire pipeline within performance threshold', async () => {
+  testOrSkip('should run the entire pipeline within performance threshold', async () => {
     // Mock filesystem operations
     jest.spyOn(fs, 'existsSync').mockReturnValue(true);
     jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined as any);
@@ -177,7 +183,7 @@ describe.skip('paper_architect performance', () => {
     expect(duration).toBeLessThan(PERF_THRESHOLDS.TOTAL);
   });
   
-  it('should handle large paper content efficiently', async () => {
+  testOrSkip('should handle large paper content efficiently', async () => {
     // Create a very large mock paper
     const largeMockPaperContent = {
       ...mockPaperContent,

@@ -28,14 +28,14 @@ describe('paper_architect end-to-end', () => {
   // Set up test environment
   beforeAll(() => {
     // Create test output directory if it doesn't exist
-    if (\!fs.existsSync(outputDir)) {
+    if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
     
     // Check if test paper exists or create a dummy one
-    if (\!fs.existsSync(testPaperPath)) {
+    if (!fs.existsSync(testPaperPath)) {
       const fixturesDir = path.dirname(testPaperPath);
-      if (\!fs.existsSync(fixturesDir)) {
+      if (!fs.existsSync(fixturesDir)) {
         fs.mkdirSync(fixturesDir, { recursive: true });
       }
       fs.writeFileSync(testPaperPath, 'Mock PDF content for testing');

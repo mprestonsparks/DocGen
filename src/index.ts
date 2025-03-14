@@ -1,9 +1,11 @@
 // These imports are needed for TypeScript
 import * as path from 'path';
 import * as fs from 'fs';
+import * as yaml from 'js-yaml';
 import { Command } from 'commander';
 import * as paperArchitect from './paper_architect';
 import * as llm from './utils/llm';
+import * as logger from './utils/logger';
 
 // Define interfaces for paper architect options
 interface PaperArchitectOptions {
@@ -218,4 +220,32 @@ if (require.main === module) {
     console.error('For more information: node dist/index.js paper-architect --help');
     process.exit(1);
   }
+}
+
+/**
+ * Load project defaults from configuration file or use built-in defaults
+ */
+export function loadProjectDefaults() {
+  try {
+    const configPath = path.join(__dirname, '../config/project-defaults.yaml');
+    if (fs.existsSync(configPath)) {
+      return yaml.load(fs.readFileSync(configPath, 'utf8')) as any;
+    }
+  } catch (error) {
+    logger.error(`Error loading project defaults: ${error}`);
+  }
+  
+  return {
+    schema_versions: { prd: '1.0.0', srs: '1.0.0', sad: '1.0.0', sdd: '1.0.0', stp: '1.0.0' },
+    document_versions: { prd: '1.0.0', srs: '1.0.0', sad: '1.0.0', sdd: '1.0.0', stp: '1.0.0' },
+    document_statuses: ['DRAFT', 'REVIEW', 'APPROVED'],
+    project_types: {
+      WEB: { recommended_docs: ['prd', 'srs', 'sad', 'sdd', 'stp'] },
+      MOBILE: { recommended_docs: ['prd', 'srs', 'sad', 'sdd', 'stp'] },
+      API: { recommended_docs: ['prd', 'srs', 'sad', 'sdd', 'stp'] },
+      DESKTOP: { recommended_docs: ['prd', 'srs', 'sad', 'sdd', 'stp'] },
+      OTHER: { recommended_docs: ['prd', 'srs', 'sad', 'sdd', 'stp'] },
+      ACADEMIC_PAPER: { recommended_docs: ['implementation_plan', 'executable_specs', 'traceability_matrix'] }
+    }
+  };
 }

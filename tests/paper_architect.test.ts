@@ -254,27 +254,38 @@ jest.mock('../src/utils/session', () => ({
 
 // Mock extraction module
 jest.mock('../src/paper_architect/extraction', () => ({
-  extractPaperContent: jest.fn().mockResolvedValue(mockPaperContent)
+  extractPaperContent: jest.fn().mockResolvedValue({})
 }));
 
 // Mock knowledge module
 jest.mock('../src/paper_architect/knowledge', () => ({
-  generateKnowledgeModel: jest.fn().mockResolvedValue(mockKnowledgeGraph)
+  generateKnowledgeModel: jest.fn().mockResolvedValue({})
 }));
 
 // Mock specifications module
 jest.mock('../src/paper_architect/specifications', () => ({
-  generateExecutableSpecifications: jest.fn().mockResolvedValue(mockExecutableSpecs),
+  generateExecutableSpecifications: jest.fn().mockResolvedValue([]),
   formatExecutableSpecification: jest.fn().mockReturnValue('# Mock Executable Spec'),
-  parseExecutableSpecification: jest.fn().mockReturnValue(mockExecutableSpecs[0]),
+  parseExecutableSpecification: jest.fn().mockReturnValue({}),
   generateVerificationReport: jest.fn().mockReturnValue('# Mock Verification Report')
 }));
 
 // Mock traceability module
 jest.mock('../src/paper_architect/traceability', () => ({
-  generateInitialTraceabilityMatrix: jest.fn().mockReturnValue(mockTraceabilityMatrix),
+  generateInitialTraceabilityMatrix: jest.fn().mockReturnValue({
+    paperElements: [],
+    codeElements: [],
+    relationships: []
+  }),
   updateTraceabilityMatrix: jest.fn().mockReturnValue({
-    ...mockTraceabilityMatrix,
+    paperElements: [
+      {
+        id: 'algo-1',
+        type: 'algorithm',
+        name: 'Test Algorithm',
+        description: 'Test algorithm description'
+      }
+    ],
     codeElements: [
       {
         id: 'code-1',
@@ -297,17 +308,48 @@ jest.mock('../src/paper_architect/traceability', () => ({
 
 // Mock workflow module
 jest.mock('../src/paper_architect/workflow', () => ({
-  generateImplementationPlan: jest.fn().mockResolvedValue(mockImplementationPlan),
-  formatImplementationPlan: jest.fn().mockReturnValue(mockImplementationPlanMarkdown),
-  parseImplementationPlan: jest.fn().mockReturnValue(mockImplementationPlan),
-  updateImplementationProgress: jest.fn().mockReturnValue({
-    ...mockImplementationPlan,
+  generateImplementationPlan: jest.fn().mockResolvedValue({
+    id: 'plan-1',
+    title: 'Implementation Plan',
     stages: [
       {
-        ...mockImplementationPlan.stages[0],
+        id: 'stage-1',
+        name: 'Foundation Layer',
+        description: 'Implement the core components',
         components: [
           {
-            ...mockImplementationPlan.stages[0].components[0],
+            id: 'component-1-1',
+            name: 'Test Component',
+            description: 'Test component description',
+            conceptIds: ['concept-1'],
+            dependencies: [],
+            status: 'notStarted'
+          }
+        ]
+      }
+    ],
+    verificationStrategy: {
+      unitTests: [],
+      integrationTests: [],
+      validationExperiments: []
+    }
+  }),
+  formatImplementationPlan: jest.fn().mockReturnValue('# Mock Implementation Plan'),
+  parseImplementationPlan: jest.fn().mockReturnValue({
+    id: 'plan-1',
+    title: 'Implementation Plan',
+    stages: []
+  }),
+  updateImplementationProgress: jest.fn().mockReturnValue({
+    id: 'plan-1',
+    title: 'Implementation Plan',
+    stages: [
+      {
+        id: 'stage-1',
+        name: 'Foundation Layer',
+        components: [
+          {
+            id: 'component-1-1',
             status: 'implemented'
           }
         ]

@@ -223,6 +223,49 @@ if (require.main === module) {
 }
 
 /**
+ * Validate schema version compatibility
+ * Document schema version must be compatible with template schema version.
+ * 
+ * Rules:
+ * 1. Major version must match
+ * 2. Document minor version must be <= template minor version
+ * 3. Patch version is ignored
+ * 
+ * @param documentVersion Document schema version (x.y.z)
+ * @param templateVersion Template schema version (x.y.z)
+ * @returns true if compatible, false otherwise
+ */
+export function validateSchemaVersionCompatibility(documentVersion: string, templateVersion: string): boolean {
+  try {
+    // Parse versions into components
+    const docParts = documentVersion.split('.').map(Number);
+    const templateParts = templateVersion.split('.').map(Number);
+    
+    // If any part is NaN, versions are invalid
+    if (docParts.some(isNaN) || templateParts.some(isNaN)) {
+      logger.error(`Invalid version format: ${documentVersion} or ${templateVersion}`);
+      return false;
+    }
+    
+    // Major version must match exactly
+    if (docParts[0] !== templateParts[0]) {
+      return false;
+    }
+    
+    // Document minor version must be <= template minor version
+    if (docParts[1] > templateParts[1]) {
+      return false;
+    }
+    
+    // Compatible
+    return true;
+  } catch (error) {
+    logger.error(`Error validating schema versions: ${error}`);
+    return false;
+  }
+}
+
+/**
  * Load project defaults from configuration file or use built-in defaults
  */
 export function loadProjectDefaults() {

@@ -134,7 +134,10 @@ describe('paper_architect integration with DocGen core', () => {
   // Setup for these specific tests
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(config, 'loadDocumentDefaults').mockReturnValue({});
+    // Use loadDefaultsMethod if it exists, otherwise skip this mock
+    if (typeof config.loadDocumentDefaults === 'function') {
+      jest.spyOn(config, 'loadDocumentDefaults').mockReturnValue({});
+    }
     jest.spyOn(validation, 'validateDocument').mockReturnValue({
       isValid: true,
       errors: [],

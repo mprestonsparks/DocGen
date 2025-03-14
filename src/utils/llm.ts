@@ -49,6 +49,16 @@ const generateCacheKey = (prompt: string): string => {
  * @param useCache Whether to use the cache
  * @returns The LLM response
  */
+/**
+ * Query the LLM with a prompt (alias for callLLM for compatibility)
+ * @param prompt The prompt to send to the LLM
+ * @param useCache Whether to use cached responses
+ * @returns The LLM response
+ */
+export const query = async (prompt: string, useCache = true): Promise<LLMResponse> => {
+  return callLLM(prompt, useCache);
+};
+
 export const callLLM = async (prompt: string, useCache = true): Promise<LLMResponse> => {
   if (!isLLMAvailable()) {
     throw new Error('LLM is not available. Please set the ANTHROPIC_API_KEY environment variable.');

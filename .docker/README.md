@@ -9,13 +9,13 @@ This directory contains Docker configuration files for running DocGen in a conta
 
 ## Getting Started
 
-1. Build and start the Docker container:
+1. Build and start the Docker containers:
 
 ```bash
 docker-compose -f .docker/docker-compose.yml up -d
 ```
 
-2. Enter the running container:
+2. Enter the running DocGen container:
 
 ```bash
 docker-compose -f .docker/docker-compose.yml exec docgen bash
@@ -27,7 +27,21 @@ docker-compose -f .docker/docker-compose.yml exec docgen bash
 npm run interview
 npm run validate
 npm run generate
+npm run paper-architect
 ```
+
+## Using the paper_architect Module
+
+The Docker setup includes a GROBID service for PDF extraction, which is used by the paper_architect module. To process an academic paper:
+
+1. Place your PDF paper in a location accessible to Docker (e.g., your project directory)
+2. Run the paper-architect command:
+
+```bash
+npm run paper-architect -- -p /app/path/to/your/paper.pdf -l python
+```
+
+3. Access the generated files in the output directory (default: docs/generated/paper)
 
 ## Environment Variables
 

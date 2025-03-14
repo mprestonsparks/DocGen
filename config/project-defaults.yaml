@@ -7,6 +7,11 @@ schema_versions:
   sad: "1.0.0"
   sdd: "1.0.0"
   stp: "1.0.0"
+  paper_extraction: "1.0.0"
+  knowledge_model: "1.0.0" 
+  executable_spec: "1.0.0"
+  traceability_matrix: "1.0.0"
+  implementation_plan: "1.0.0"
 
 # Default document versions
 document_versions:
@@ -15,6 +20,11 @@ document_versions:
   sad: "1.0.0"
   sdd: "1.0.0"
   stp: "1.0.0"
+  paper_extraction: "1.0.0"
+  knowledge_model: "1.0.0"
+  executable_spec: "1.0.0"
+  traceability_matrix: "1.0.0"
+  implementation_plan: "1.0.0"
 
 # Default document statuses
 document_statuses:
@@ -77,6 +87,17 @@ project_types:
       - user_manual
       - installation_guide
   
+  ACADEMIC_PAPER:
+    recommended_docs:
+      - paper_extraction
+      - knowledge_model
+      - executable_spec
+      - traceability_matrix
+      - implementation_plan
+    additional_docs:
+      - sdd
+      - stp
+  
   OTHER:
     recommended_docs:
       - prd
@@ -124,3 +145,43 @@ section_requirements:
     - TEST_ENVIRONMENT
     - TEST_CASES
     - TEST_SCHEDULE
+    
+  paper_extraction:
+    - DOCUMENT_CONTROL
+    - PAPER_METADATA
+    - STRUCTURE_OVERVIEW
+    - ALGORITHMS
+    - EQUATIONS
+    - FIGURES_TABLES
+    - CITATIONS
+    
+  knowledge_model:
+    - DOCUMENT_CONTROL
+    - CONCEPT_DEFINITIONS
+    - RELATIONSHIP_MAPPINGS
+    - ONTOLOGY_ALIGNMENT
+    - DOMAIN_SPECIFIC_ATTRIBUTES
+    
+  executable_spec:
+    - DOCUMENT_CONTROL
+    - SPECIFICATION_OVERVIEW
+    - INPUT_OUTPUT_DEFINITIONS
+    - ALGORITHM_STEPS
+    - CODE_BLOCKS
+    - VERIFICATION_FIXTURES
+    
+  traceability_matrix:
+    - DOCUMENT_CONTROL
+    - PAPER_ELEMENTS
+    - CODE_ELEMENTS
+    - RELATIONSHIPS
+    - COVERAGE_METRICS
+    - VISUALIZATION
+    
+  implementation_plan:
+    - DOCUMENT_CONTROL
+    - PLAN_OVERVIEW
+    - IMPLEMENTATION_STAGES
+    - COMPONENT_DEPENDENCIES
+    - VERIFICATION_STRATEGY
+    - CHALLENGE_ASSESSMENT

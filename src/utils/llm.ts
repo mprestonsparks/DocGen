@@ -47,6 +47,28 @@ let openaiClient: OpenAI | null = null;
 let cohereClient: Cohere | null = null;
 
 /**
+ * TODO: Implement streaming response support for large generations
+ * 1. Add streaming interface to LLM functions (both provider-specific and general)
+ * 2. Support event-based callbacks for processing stream chunks
+ * 3. Implement response aggregation for streamed completions
+ * 4. Add progress reporting for long-running generations
+ * 5. Handle streaming-specific error states and recovery
+ * This relates to issue #15.
+ * Github issue: https://github.com/mprestonsparks/DocGen/issues/15
+ */
+
+/**
+ * TODO: Enable thread/conversation management for multi-turn interactions
+ * 1. Implement conversation state tracking with message history
+ * 2. Support context windowing for long conversations
+ * 3. Add conversation summarization for context compression
+ * 4. Implement conversation forking/branching capabilities
+ * 5. Support conversation export/import for persistence
+ * This relates to issue #15.
+ * Github issue: https://github.com/mprestonsparks/DocGen/issues/15
+ */
+
+/**
  * Get an Anthropic client
  * @returns An Anthropic client
  */

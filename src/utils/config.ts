@@ -90,12 +90,62 @@ export const isAdvancedValidationEnabled = (): boolean => {
  * Get the LLM configuration
  */
 export const getLLMConfig = (): LLMConfig => {
+  const primaryProvider = getConfig<string>('LLM_PROVIDER', 'anthropic') as LLMProvider;
+  const fallbackProvidersStr = getConfig<string>('LLM_FALLBACK_PROVIDERS', '');
+  const fallbackProviders = fallbackProvidersStr 
+    ? fallbackProvidersStr.split(',').map(p => p.trim()) as LLMProvider[]
+    : undefined;
+  
   return {
-    provider: 'anthropic',
+    provider: primaryProvider,
     model: getConfig<string>('LLM_MODEL', 'claude-3-5-sonnet-20240620'),
     maxTokens: getConfig<number>('LLM_MAX_TOKENS', 4000),
-    temperature: getConfig<number>('LLM_TEMPERATURE', 0.7)
+    temperature: getConfig<number>('LLM_TEMPERATURE', 0.7),
+    fallbackProviders,
+    timeout: getConfig<number>('LLM_TIMEOUT', 30000)
   };
+};
+
+/**
+ * Get provider-specific configurations
+ */
+export const getLLMProviderConfigs = () => {
+  return {
+    anthropic: {
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      model: getConfig<string>('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20240620'),
+      maxTokens: getConfig<number>('ANTHROPIC_MAX_TOKENS', 4000),
+      temperature: getConfig<number>('ANTHROPIC_TEMPERATURE', 0.7),
+    },
+    openai: {
+      apiKey: process.env.OPENAI_API_KEY,
+      model: getConfig<string>('OPENAI_MODEL', 'gpt-4o'),
+      maxTokens: getConfig<number>('OPENAI_MAX_TOKENS', 4000),
+      temperature: getConfig<number>('OPENAI_TEMPERATURE', 0.7),
+    },
+    cohere: {
+      apiKey: process.env.COHERE_API_KEY,
+      model: getConfig<string>('COHERE_MODEL', 'command-r'),
+      maxTokens: getConfig<number>('COHERE_MAX_TOKENS', 4000),
+      temperature: getConfig<number>('COHERE_TEMPERATURE', 0.7),
+    }
+  };
+};
+
+/**
+ * Get API key for specified provider
+ */
+export const getLLMApiKey = (provider: LLMProvider): string | undefined => {
+  switch (provider) {
+    case 'anthropic':
+      return process.env.ANTHROPIC_API_KEY;
+    case 'openai':
+      return process.env.OPENAI_API_KEY;
+    case 'cohere':
+      return process.env.COHERE_API_KEY;
+    default:
+      return undefined;
+  }
 };
 
 /**
@@ -106,15 +156,29 @@ export const getAnthropicApiKey = (): string => {
 };
 
 /**
- * Check if the LLM is available (API key is set)
+ * Check if a specific LLM provider is available
  */
-export const isLLMAvailable = (): boolean => {
-  try {
-    getAnthropicApiKey();
-    return true;
-  } catch {
+export const isProviderAvailable = (provider: LLMProvider): boolean => {
+  // Check if the API key is available
+  const apiKey = getLLMApiKey(provider);
+  if (!apiKey) {
     return false;
   }
+  
+  // Check if the package is available - this is done in the LLM module
+  // Here we just assume the API key check is sufficient
+  return true;
+};
+
+/**
+ * Check if the LLM is available (any provider is available)
+ */
+export const isLLMAvailable = (): boolean => {
+  const config = getLLMConfig();
+  const providers = [config.provider, ...(config.fallbackProviders || [])];
+  
+  // Check if any provider is available
+  return providers.some(provider => isProviderAvailable(provider));
 };
 
 /**

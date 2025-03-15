@@ -134,13 +134,54 @@ export interface SessionMetadata {
 /**
  * LLM provider options
  */
-export type LLMProvider = 'anthropic';
+export type LLMProvider = 'anthropic' | 'openai' | 'cohere' | 'fallback';
 
 /**
  * LLM configuration
  */
 export interface LLMConfig {
   provider: LLMProvider;
+  model: string;
+  maxTokens: number;
+  temperature: number;
+  fallbackProviders?: LLMProvider[];
+  timeout?: number;
+}
+
+/**
+ * Provider-specific configurations
+ */
+export interface LLMProviderConfigs {
+  anthropic?: AnthropicConfig;
+  openai?: OpenAIConfig;
+  cohere?: CohereConfig;
+}
+
+/**
+ * Anthropic API configuration
+ */
+export interface AnthropicConfig {
+  apiKey?: string;
+  model: string;
+  maxTokens: number;
+  temperature: number;
+}
+
+/**
+ * OpenAI API configuration
+ */
+export interface OpenAIConfig {
+  apiKey?: string;
+  model: string;
+  maxTokens: number;
+  temperature: number;
+}
+
+/**
+ * Cohere API configuration
+ */
+export interface CohereConfig {
+  apiKey?: string;
   model: string;
   maxTokens: number;
   temperature: number;

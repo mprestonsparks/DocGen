@@ -8,7 +8,15 @@ export default {
     }],
   },
   testMatch: ['**/tests/**/*.test.js', '**/tests/**/*.test.ts'],
-  collectCoverage: false,
+  collectCoverage: true,
+  coverageThreshold: {
+    global: {
+      statements: 69, // Current: 68.66%, target: 80%
+      branches: 47,   // Current: 47.17%, target: 60%
+      functions: 70,  // Current: 70.16%, target: 70% - Met!
+      lines: 69       // Current: 68.67%, target: 80%
+    }
+  },
   // Automatically mock certain problematic modules
   moduleNameMapper: {
     // Add module name mappings if needed

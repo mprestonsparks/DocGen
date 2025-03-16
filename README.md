@@ -2,31 +2,20 @@
 
 > An intelligent documentation management system with structured templates and AI assistance
 
-<!-- Project Status Badges -->
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/mprestonsparks/DocGen/blob/main/LICENSE)
-[![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
-[![npm Version](https://img.shields.io/badge/npm-%3E%3D7.0.0-brightgreen)](https://www.npmjs.com/)
-
-<!-- Workflow Status Badges -->
-[![Documentation CI](https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml/badge.svg?branch=main)](https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml)
-[![Validation](https://github.com/mprestonsparks/DocGen/actions/workflows/validate-docs.yml/badge.svg?branch=main)](https://github.com/mprestonsparks/DocGen/actions/workflows/validate-docs.yml)
-[![PR Validation](https://github.com/mprestonsparks/DocGen/actions/workflows/pr-validation.yml/badge.svg)](https://github.com/mprestonsparks/DocGen/actions/workflows/pr-validation.yml)
-
-<!-- Coverage Badges -->
-[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/mprestonsparks/DocGen/main/.github/badges/coverage.json)](https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml)
-[![Documentation Status](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/mprestonsparks/DocGen/main/.github/badges/documentation-status.json)](https://github.com/mprestonsparks/DocGen/actions/workflows/validate-docs.yml)
-[![Code Quality](https://img.shields.io/badge/Code_Quality-A-brightgreen)](https://github.com/mprestonsparks/DocGen/blob/main/tests/README.md)
-
-<!-- GitHub Stats Badges -->
-[![GitHub Issues](https://img.shields.io/github/issues/mprestonsparks/DocGen)](https://github.com/mprestonsparks/DocGen/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/mprestonsparks/DocGen)](https://github.com/mprestonsparks/DocGen/pulls)
-[![Last Commit](https://img.shields.io/github/last-commit/mprestonsparks/DocGen)](https://github.com/mprestonsparks/DocGen/commits/main)
-
-<!-- Custom Badges -->
-[![AI-Powered](https://img.shields.io/badge/AI-Powered-blue)](https://github.com/mprestonsparks/DocGen#ai-enhancement)
-[![Template System](https://img.shields.io/badge/Template-System-brightgreen)](https://github.com/mprestonsparks/DocGen#template-structure)
-[![Existing Project Support](https://img.shields.io/badge/Existing_Project-Support-orange)](https://github.com/mprestonsparks/DocGen#existing-project-support)
-[![Test Suite](https://img.shields.io/badge/Tests-308_passed-success)](https://github.com/mprestonsparks/DocGen/blob/main/tests/README.md)
+<p align="center">
+  <!-- Essential Badges - Status & Requirements -->
+  <a href="https://github.com/mprestonsparks/DocGen/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen" alt="Node ≥18.0.0"></a>
+  <a href="https://www.npmjs.com/"><img src="https://img.shields.io/badge/npm-%3E%3D7.0.0-brightgreen" alt="npm ≥7.0.0"></a>
+  
+  <!-- CI/Workflow Status - Only the important ones -->
+  <a href="https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml"><img src="https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml/badge.svg?branch=main" alt="Documentation CI"></a>
+  <a href="https://github.com/mprestonsparks/DocGen/actions/workflows/validate-docs.yml"><img src="https://github.com/mprestonsparks/DocGen/actions/workflows/validate-docs.yml/badge.svg?branch=main" alt="Validation"></a>
+  
+  <!-- Key Project Metrics -->
+  <a href="https://github.com/mprestonsparks/DocGen/issues"><img src="https://img.shields.io/github/issues/mprestonsparks/DocGen" alt="GitHub Issues"></a>
+  <a href="https://github.com/mprestonsparks/DocGen/blob/main/tests/README.md"><img src="https://img.shields.io/badge/Tests-308_passed-success" alt="308 Tests"></a>
+</p>
 
 DocGen is a comprehensive documentation generation system designed to streamline the creation of high-quality software project documentation. Leveraging AI-powered interviews and structured templates, it guides developers through the documentation process while ensuring consistency, completeness, and cross-referencing integrity.
 

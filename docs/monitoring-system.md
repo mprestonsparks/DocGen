@@ -23,7 +23,34 @@ The main tracking issue [#19](https://github.com/mprestonsparks/DocGen/issues/19
 
 ## Key Monitoring Components
 
-### 1. Requirement-Driven Contract Testing
+### 1. TODO Analysis and Implementation Gap Detection
+
+A core component of the monitoring system is the Todo Validator, which analyzes code to identify implementation gaps:
+
+```typescript
+// Using the unified todo validator with semantic analysis
+const validationResult = await validateTodos('/path/to/project', {
+  depth: 'standard',
+  reportMissing: true,
+  suggestTodos: true,
+  analyzeSemantics: true  // Enable semantic code analysis
+});
+
+// Generate enhanced report with severity breakdown
+await generateTodoReport(
+  '/path/to/project',
+  validationResult,
+  'docs/reports/enhanced-todo-report.md',
+  true  // Enable enhanced format
+);
+```
+
+The validator can be run in various modes:
+- Basic mode: Detects missing TODOs based on code structure
+- Enhanced mode: Adds semantic analysis to find deeper implementation issues
+- Custom mode: Configurable analysis options for specialized needs
+
+### 2. Requirement-Driven Contract Testing
 
 Each module has explicit contracts (interfaces and behaviors) that are tested:
 
@@ -181,7 +208,7 @@ The current implementation backlog is tracked in GitHub issues:
 
 ## MCP Server Integration
 
-To enhance monitoring capabilities, we are developing custom Model Control Protocol (MCP) servers as described in [issue #21](https://github.com/mprestonsparks/DocGen/issues/21).
+To enhance monitoring capabilities, we are developing custom Model Context Protocol (MCP) servers as described in [issue #21](https://github.com/mprestonsparks/DocGen/issues/21).
 
 These servers will provide:
 
@@ -196,8 +223,31 @@ These servers will provide:
 
 1. Review issue [#19](https://github.com/mprestonsparks/DocGen/issues/19) for current implementation status
 2. When working on code, check for TODO, FIXME, or "placeholder" comments
-3. Run `npm run check-implementation` to verify implementation completeness
-4. Ensure test coverage meets or exceeds thresholds
+3. Run `npm run validate-todos` to identify missing or incomplete implementations
+4. For deeper analysis, run `npm run validate-todos:enhanced` with semantic analysis
+5. Run `npm run monitor` to generate comprehensive implementation reports
+6. Ensure test coverage meets or exceeds thresholds
+
+### CLI Commands
+
+```bash
+# Run the basic todo validator
+npm run validate-todos
+
+# Run the enhanced todo validator with semantic analysis
+npm run validate-todos:enhanced
+
+# Run the complete monitoring system (todos, tests, reports)
+npm run monitor
+```
+
+### Reports
+
+Implementation status reports are automatically generated in the `docs/reports` directory:
+
+- Basic TODO Report: [todo-report.md](./reports/todo-report.md)
+- Enhanced TODO Report: [enhanced-todo-report.md](./reports/enhanced-todo-report.md)
+- Implementation Status: [implementation-status.md](./reports/implementation-status.md)
 
 ### For Claude Code
 

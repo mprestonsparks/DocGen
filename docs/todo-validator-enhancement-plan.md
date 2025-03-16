@@ -269,86 +269,85 @@ export async function detectImplementationDrift(
 
 ## Phase 6: Integration with Todo Validator
 
-### 6.1. Enhanced Todo Validator Core
-- Extend existing TodoValidator with new analyzers
-- Integrate all detection methods into unified workflow
-- Enhance todo generation with semantic context
+### 6.1. Unified Todo Validator Core
+- Extend TodoValidator with semantic analysis capabilities
+- Integrate all detection methods into a single, configurable validator
+- Enable optional advanced analysis through feature flags
 
 ```typescript
-// src/utils/enhanced-todo-validator.ts
-export interface EnhancedTodoValidationOptions extends TodoValidationOptions {
+// src/utils/todo-validator.ts
+export interface TodoValidationOptions {
+  depth: 'basic' | 'standard' | 'deep';
+  reportMissing: boolean;
+  suggestTodos: boolean;
+  includeDotFiles?: boolean;
+  maxFileSize?: number;
+  includeNodeModules?: boolean;
+  // Enhanced validation options
+  analyzeSemantics?: boolean; 
   analyzeArchitecture?: boolean;
-  analyzeSemantics?: boolean;
   analyzeComments?: boolean;
   analyzeTestQuality?: boolean;
   analyzeRequirements?: boolean;
+  semanticAnalysisDepth?: 'basic' | 'standard' | 'deep';
 }
 
-export interface EnhancedTodoValidationResult extends TodoValidationResult {
-  architecturalGaps: ImplementationGap[];
-  semanticIssues: ASTAnalysisResult & { controlFlow: ControlFlowAnalysis[] };
-  commentMismatches: CommentCodeMismatch[];
-  testQualityIssues: TestQualityIssue[];
-  requirementDrifts: ImplementationDrift[];
+export interface TodoValidationResult {
+  existingTodos: TodoItem[];
+  missingTodos: TodoItem[];
+  suggestions: TodoItem[];
+  // Enhanced validation results (optional)
+  semanticIssues?: ASTAnalysisResult;
+  architecturalGaps?: ImplementationGap[];
+  commentMismatches?: CommentCodeMismatch[];
+  testQualityIssues?: TestQualityIssue[];
+  requirementDrifts?: ImplementationDrift[];
 }
 
-export async function validateTodosEnhanced(
+export async function validateTodos(
   projectPath: string,
-  options: EnhancedTodoValidationOptions
-): Promise<EnhancedTodoValidationResult>;
+  options: TodoValidationOptions
+): Promise<TodoValidationResult>;
 ```
 
-### 6.2. Enhanced Report Generator
-- Create comprehensive reports with semantic insights
-- Generate visualization of implementation gaps
-- Provide prioritized TODO recommendations
+### 6.2. Flexible Report Generator
+- Create reports that adapt to available analysis data
+- Support both basic and enhanced reporting formats
+- Provide prioritized TODO recommendations based on severity
 
 ```typescript
-// src/utils/enhanced-todo-report.ts
-export interface EnhancedTodoReport {
-  summary: {
-    existingTodos: number;
-    missingTodos: number;
-    architecturalGaps: number;
-    semanticIssues: number;
-    commentMismatches: number;
-    testQualityIssues: number;
-    requirementDrifts: number;
-  };
-  prioritizedTodos: TodoItem[];
-  sections: {
-    architecture: ImplementationGap[];
-    semantics: (ASTAnalysisResult & { controlFlow: ControlFlowAnalysis[] })[];
-    comments: CommentCodeMismatch[];
-    tests: TestQualityIssue[];
-    requirements: ImplementationDrift[];
-  };
-  recommendations: string[];
-}
-
-export async function generateEnhancedTodoReport(
-  result: EnhancedTodoValidationResult,
-  options: { format?: 'markdown' | 'html' | 'json' }
-): Promise<string>;
+// src/utils/todo-validator.ts
+export async function generateTodoReport(
+  projectPath: string,
+  validationResult: TodoValidationResult,
+  outputPath: string,
+  enhanced: boolean = false
+): Promise<void>;
 ```
 
 ## Phase 7: Command Line Interface
 
 ### 7.1. CLI Extension
-- Extend the CLI with new options for enhanced validation
-- Add interactive mode for exploring validation results
-- Provide visualization options
+- Use a single CLI script with options for basic or enhanced validation
+- Add flags to control different analysis types
+- Provide simple commands for common validation scenarios
 
 ```typescript
-// scripts/enhanced-validate-todos.ts
+// scripts/validate-todos.ts
 // Command line options:
-// --semantic-analysis   Enable semantic code analysis
-// --architecture-analysis   Enable architectural analysis
-// --comment-analysis    Enable comment-code mismatch analysis
-// --test-quality   Analyze test quality
-// --requirements    Analyze requirements traceability
-// --interactive     Launch interactive explorer
-// --visualization   Generate visualization
+// --project-path <path>       Path to the project to validate
+// --depth <level>             Analysis depth (basic, standard, deep)
+// --report-path <path>        Path to save the validation report
+// --analyze-semantics         Enable semantic code analysis
+// --enhanced                  Generate enhanced report with semantic analysis details
+// --analyze-architecture      Enable architectural analysis
+// --analyze-comments          Enable comment-code mismatch analysis
+// --analyze-test-quality      Analyze test quality
+// --analyze-requirements      Analyze requirements traceability
+
+// npm scripts usage:
+// npm run validate-todos            # Basic todo validation
+// npm run validate-todos:enhanced   # Enhanced validation with semantic analysis
 ```
 
 ## Implementation Timeline

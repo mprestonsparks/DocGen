@@ -3,10 +3,8 @@
 > An intelligent documentation management system with structured templates and AI assistance
 
 <p align="center">
-  <!-- Essential Badges - Status & Requirements -->
+  <!-- Essential Badges - Status -->
   <a href="https://github.com/mprestonsparks/DocGen/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen" alt="Node ≥18.0.0"></a>
-  <a href="https://www.npmjs.com/"><img src="https://img.shields.io/badge/npm-%3E%3D7.0.0-brightgreen" alt="npm ≥7.0.0"></a>
   
   <!-- CI/Workflow Status - Only the important ones -->
   <a href="https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml"><img src="https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml/badge.svg?branch=main" alt="Documentation CI"></a>
@@ -24,6 +22,8 @@ DocGen is a comprehensive documentation generation system designed to streamline
   <img src="https://img.shields.io/badge/Handlebars-Templates-F0772B?logo=handlebarsdotjs&logoColor=white" alt="Handlebars Templates">
   <img src="https://img.shields.io/badge/Jest-308_Tests-C21325?logo=jest&logoColor=white" alt="Jest Tests">
   <img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white" alt="Docker Ready">
+  <img src="https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen" alt="Node ≥18.0.0">
+  <img src="https://img.shields.io/badge/npm-%3E%3D7.0.0-brightgreen" alt="npm ≥7.0.0">
   <img src="https://img.shields.io/badge/AI-Powered-8A2BE2" alt="AI-Powered">
 </p>
 

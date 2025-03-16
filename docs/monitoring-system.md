@@ -2,6 +2,11 @@
 
 This document outlines the comprehensive system for monitoring implementation completeness in the DocGen project.
 
+> **Related Documents**: 
+> - [Monitoring System Architecture](./monitoring-system-architecture.md)
+> - [Traceability Matrix](./traceability/matrix.yaml)
+> - [Implementation Plan](./implementation-plan.md)
+
 ## Overview
 
 The implementation monitoring system ensures that:
@@ -10,6 +15,10 @@ The implementation monitoring system ensures that:
 2. Implementation progress is measured against clear requirements
 3. Test coverage meets or exceeds defined thresholds
 4. Code quality and completeness is maintained across the codebase
+
+![Monitoring System Overview](./assets/monitoring-system-overview.md)
+
+The above diagram shows the relationships between the components of the monitoring system and how they interact with the codebase, reports, and external systems.
 
 ## GitHub Issues Framework
 
@@ -208,14 +217,49 @@ The current implementation backlog is tracked in GitHub issues:
 
 ## MCP Server Integration
 
-To enhance monitoring capabilities, we are developing custom Model Context Protocol (MCP) servers as described in [issue #21](https://github.com/mprestonsparks/DocGen/issues/21).
+The monitoring system includes custom Model Context Protocol (MCP) servers that extend Claude Code's capabilities as described in [issue #21](https://github.com/mprestonsparks/DocGen/issues/21).
 
-These servers will provide:
+### Implemented MCP Servers
 
-1. **GitHub Issues & PR Integration**: Direct issue tracking during development
-2. **Test Coverage Analysis**: Automated coverage reporting and correlation
-3. **Code Quality Metrics**: Integrated quality assessment for implementation
-4. **Documentation Generation**: Synchronized implementation documentation
+1. **GitHub Issues MCP** (`mcp-servers/github-issues`)
+   - Query, create, and update GitHub issues
+   - Track implementation gaps via issues
+   - Update implementation status information
+   - Integrate with monitoring reports
+
+2. **Coverage Analysis MCP** (`mcp-servers/coverage-analysis`)
+   - Parse and analyze test coverage data
+   - Generate coverage reports in Markdown
+   - Correlate coverage with implementation issues
+   - Track coverage changes over time
+
+### Running MCP Servers
+
+The MCP servers can be started using the provided script:
+
+```bash
+# From the project root
+npm run mcp:start
+```
+
+Or manually:
+
+```bash
+# Start individual servers
+cd mcp-servers/github-issues
+node server.js
+
+cd mcp-servers/coverage-analysis
+node server.js
+```
+
+### Configuration
+
+MCP servers require configuration via `.env` files. Example configurations are provided in each server's directory. The main requirements are:
+
+- GitHub API Token (with repo scope)
+- Repository owner and name information
+- Server port configuration
 
 ## Usage Guide
 

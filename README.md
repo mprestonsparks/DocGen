@@ -49,6 +49,7 @@ DocGen is a comprehensive documentation generation system designed to streamline
 - **🔄 Version Management**: Synchronizes document versions across your project documentation
 - **🐳 Docker Support**: Containerized development environment for consistent setup and collaboration
 - **🧪 Comprehensive Testing**: 308 tests with 59% overall coverage and 95% utility module coverage
+- **📊 Implementation Monitoring**: Tracks implementation completeness with TODO analysis and reporting
 
 ## Getting Started
 
@@ -154,6 +155,12 @@ npm run interview -- --existing-project ./path/to/project
 # Validate documentation
 npm run validate
 
+# Run implementation monitoring
+npm run monitor
+
+# Validate TODOs with semantic analysis
+npm run validate-todos:enhanced
+
 # Generate documentation reports
 npm run generate-reports
 
@@ -166,6 +173,26 @@ npm test
 # Run linting
 npm run lint
 ```
+
+## Implementation Monitoring
+
+DocGen includes a comprehensive monitoring system to track implementation completeness:
+
+```bash
+# Run the complete monitoring system
+npm run monitor
+
+# Basic TODO analysis
+npm run validate-todos
+
+# Enhanced semantic analysis
+npm run validate-todos:enhanced
+
+# Start MCP servers for advanced monitoring
+npm run mcp:start
+```
+
+For more information, see the [Monitoring System Documentation](./docs/monitoring-system.md) and [Architecture](./docs/monitoring-system-architecture.md).
 
 ## Docker Support
 

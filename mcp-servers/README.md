@@ -1,10 +1,6 @@
 # DocGen MCP Servers
 
-This directory contains Model Context Protocol (MCP) servers for enhancing AI functionality with the DocGen project.
-
-## What is MCP?
-
-Model Control Protocol (MCP) allows Claude Code to connect to external servers for enhanced capabilities. These servers provide specialized functionality that extends Claude's abilities beyond its built-in tools.
+This directory contains Model Context Protocol (MCP) servers for enhancing DocGen's functionality with the DocGen project. The `mcp-servers` module allows you to connect DocGen to external servers for enhanced capabilities. These servers provide specialized functionality that extends DocGen's abilities beyond its built-in tools.
 
 ## Available Servers
 

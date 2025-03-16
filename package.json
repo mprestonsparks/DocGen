@@ -8,7 +8,7 @@
     "interview": "ts-node scripts/initialize.ts",
     "validate": "node scripts/validate-docs.js",
     "validate-todos": "ts-node --esm scripts/validate-todos.ts",
-    "enhanced-validate-todos": "ts-node --esm scripts/enhanced-validate-todos.ts",
+    "validate-todos:enhanced": "ts-node --esm scripts/validate-todos.ts --analyze-semantics --enhanced",
     "update-versions": "ts-node scripts/update-versions.ts patch",
     "generate-reports": "node scripts/generate-reports.js",
     "monitor": "./scripts/run-monitoring.sh",

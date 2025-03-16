@@ -18,11 +18,20 @@ const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.json()
+    winston.format.colorize({ all: true }),
+    winston.format.printf(({ level, message, timestamp, ...meta }) => {
+      return `${timestamp} ${level}: ${message} ${Object.keys(meta).length ? JSON.stringify(meta, null, 2) : ''}`;
+    })
   ),
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'github-issues-mcp.log' })
+    new winston.transports.File({ 
+      filename: 'github-issues-mcp.log',
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+      )
+    })
   ]
 });
 
@@ -30,10 +39,133 @@ const logger = winston.createLogger({
 const app = express();
 app.use(bodyParser.json());
 
-// Initialize GitHub client
-const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN
+// Configure additional file logger for persistent debugging
+const debugLogDir = path.join(__dirname, '../../logs/mcp-debug');
+if (!fs.existsSync(debugLogDir)) {
+  fs.mkdirSync(debugLogDir, { recursive: true });
+}
+const debugLogPath = path.join(debugLogDir, 'github-auth.log');
+const debugLogger = winston.createLogger({
+  level: 'debug',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ 
+      filename: debugLogPath,
+      maxsize: 5242880, // 5MB
+      maxFiles: 5
+    })
+  ]
 });
+
+// Function to diagnose token issues
+async function diagnoseTokenIssue(token) {
+  debugLogger.debug('Diagnosing token issue', { 
+    tokenLength: token ? token.length : 0,
+    tokenPrefix: token ? token.substring(0, 4) : 'none',
+    tokenSet: !!token,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Check token format
+  if (!token) {
+    return {
+      issue: 'MISSING_TOKEN',
+      description: 'No GitHub token was provided',
+      resolution: 'Set GITHUB_TOKEN in .env file'
+    };
+  }
+  
+  if (token === 'null' || token === 'undefined' || token === '') {
+    return {
+      issue: 'EMPTY_TOKEN',
+      description: 'GitHub token is empty or set to null/undefined',
+      resolution: 'Update GITHUB_TOKEN with a valid token in .env file'
+    };
+  }
+  
+  // Test authentication 
+  try {
+    const octo = new Octokit({ auth: token });
+    const { data } = await octo.rest.users.getAuthenticated();
+    
+    // If we get here, the token is working
+    return {
+      issue: 'NONE',
+      description: 'Token is valid',
+      username: data.login
+    };
+  } catch (error) {
+    // Analyze error to determine cause
+    if (error.status === 401) {
+      return {
+        issue: 'UNAUTHORIZED',
+        description: 'Token is invalid or expired (401 Unauthorized)',
+        errorMessage: error.message,
+        resolution: 'Generate a new token at https://github.com/settings/tokens'
+      };
+    } else if (error.status === 403) {
+      return {
+        issue: 'FORBIDDEN',
+        description: 'Token lacks required permissions (403 Forbidden)',
+        errorMessage: error.message,
+        resolution: 'Generate a new token with repo scope at https://github.com/settings/tokens'
+      };
+    } else {
+      return {
+        issue: 'UNKNOWN_ERROR',
+        description: `Unexpected error (${error.status || 'unknown status'})`,
+        errorMessage: error.message,
+        resolution: 'Check network connectivity and GitHub status'
+      };
+    }
+  }
+}
+
+// Initialize GitHub client with thorough error handling
+let octokit;
+let tokenDiagnosis = null;
+
+try {
+  const token = process.env.GITHUB_TOKEN;
+  
+  // Log token information (safely)
+  debugLogger.debug('Token information', {
+    tokenLength: token ? token.length : 0,
+    tokenPrefix: token ? token.substring(0, 4) : 'none',
+    tokenSet: !!token
+  });
+  
+  // Diagnose token issues
+  tokenDiagnosis = await diagnoseTokenIssue(token);
+  debugLogger.debug('Token diagnosis result', tokenDiagnosis);
+  
+  if (tokenDiagnosis.issue !== 'NONE') {
+    // Log detailed error information
+    logger.error(`GitHub token issue: ${tokenDiagnosis.description}`);
+    logger.error(`Resolution: ${tokenDiagnosis.resolution}`);
+    
+    // Write to debug log
+    debugLogger.error('GitHub authentication failed', tokenDiagnosis);
+    
+    // Continue without mock data - will fail properly
+    octokit = new Octokit({ auth: token });
+  } else {
+    logger.info(`GitHub token validated successfully. Authenticated as ${tokenDiagnosis.username}`);
+    octokit = new Octokit({ auth: token });
+  }
+} catch (error) {
+  logger.error(`Fatal error initializing GitHub client: ${error.message}`);
+  debugLogger.error('GitHub client initialization error', { 
+    error: error.message,
+    stack: error.stack
+  });
+  
+  // No fallback to mock data - just create a client that will fail appropriately
+  octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+}
 
 // Default configuration
 const defaultConfig = {
@@ -101,6 +233,40 @@ app.get('/capabilities', (req, res) => {
         name: 'getImplementationStatus',
         description: 'Get implementation status information',
         parameters: {}
+      },
+      {
+        name: 'getPullRequests',
+        description: 'Get pull requests from a GitHub repository',
+        parameters: {
+          state: { type: 'string', description: 'PR state (open, closed, all)', default: 'open' },
+          sort: { type: 'string', description: 'Sort field (created, updated, popularity, long-running)', default: 'updated' },
+          limit: { type: 'number', description: 'Maximum number of PRs to return', default: 10 }
+        }
+      },
+      {
+        name: 'getPullRequest',
+        description: 'Get a specific GitHub pull request by number',
+        parameters: {
+          prNumber: { type: 'number', description: 'The pull request number' }
+        }
+      },
+      {
+        name: 'createPullRequest',
+        description: 'Create a new GitHub pull request',
+        parameters: {
+          title: { type: 'string', description: 'Pull request title' },
+          body: { type: 'string', description: 'Pull request body' },
+          head: { type: 'string', description: 'The name of the branch where your changes are implemented' },
+          base: { type: 'string', description: 'The name of the branch you want the changes pulled into', default: 'main' },
+          draft: { type: 'boolean', description: 'Whether to create the pull request as a draft', default: false }
+        }
+      },
+      {
+        name: 'getFilesChanged',
+        description: 'Get files changed in a pull request',
+        parameters: {
+          prNumber: { type: 'number', description: 'The pull request number' }
+        }
       }
     ]
   });
@@ -116,6 +282,14 @@ app.post('/getIssues', async (req, res) => {
     
     logger.info('Getting issues', { owner: config.owner, repo: config.repo, state, labels });
     
+    // Enhanced error details for debugging
+    debugLogger.debug('getIssues request', { 
+      params: { owner: config.owner, repo: config.repo, state, labels, since, limit },
+      tokenStatus: tokenDiagnosis ? tokenDiagnosis.issue : 'UNKNOWN',
+      endpoint: '/getIssues'
+    });
+    
+    // Build request parameters
     const params = {
       owner: config.owner,
       repo: config.repo,
@@ -128,6 +302,7 @@ app.post('/getIssues', async (req, res) => {
     if (labels) params.labels = labels;
     if (since) params.since = since;
     
+    // Attempt to get issues from GitHub - no fallback to mock data
     const { data } = await octokit.issues.listForRepo(params);
     
     // Format the response
@@ -143,10 +318,38 @@ app.post('/getIssues', async (req, res) => {
       assignees: issue.assignees.map(assignee => assignee.login)
     }));
     
+    // Log success
+    logger.info(`Successfully retrieved ${issues.length} issues`);
+    debugLogger.debug('GitHub issues retrieved successfully', { 
+      count: issues.length,
+      requestParams: params
+    });
+    
     res.json({ success: true, issues });
   } catch (error) {
-    logger.error('Error getting issues', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    // Enhanced error logging with detailed diagnostics
+    const errorDetails = {
+      endpoint: 'getIssues',
+      message: error.message,
+      status: error.status,
+      response: error.response ? {
+        data: error.response.data,
+        status: error.response.status,
+        headers: error.response.headers
+      } : null,
+      tokenDiagnosis: tokenDiagnosis
+    };
+    
+    logger.error(`Error getting issues: ${error.message}`);
+    debugLogger.error('GitHub issues API error', errorDetails);
+    
+    // Return detailed error to help debugging
+    res.status(error.status || 500).json({ 
+      success: false, 
+      error: error.message,
+      tokenIssue: tokenDiagnosis ? tokenDiagnosis.description : null,
+      resolution: tokenDiagnosis ? tokenDiagnosis.resolution : null
+    });
   }
 });
 
@@ -321,6 +524,13 @@ app.post('/getImplementationStatus', async (req, res) => {
     
     logger.info('Getting implementation status', { owner: config.owner, repo: config.repo });
     
+    // Enhanced error details for debugging
+    debugLogger.debug('getImplementationStatus request', { 
+      params: { owner: config.owner, repo: config.repo },
+      tokenStatus: tokenDiagnosis ? tokenDiagnosis.issue : 'UNKNOWN',
+      endpoint: '/getImplementationStatus'
+    });
+    
     // Get implementation-gap labeled issues
     const { data: issues } = await octokit.issues.listForRepo({
       owner: config.owner,
@@ -387,7 +597,7 @@ app.post('/getImplementationStatus', async (req, res) => {
       }
     });
     
-    // Read implementation status report if available
+    // Read implementation status report if available (optional enhancement, not mock data)
     try {
       const reportsPath = path.join(__dirname, '../../docs/reports');
       const implementationReportPath = path.join(reportsPath, 'implementation-status.md');
@@ -410,11 +620,224 @@ app.post('/getImplementationStatus', async (req, res) => {
       }
     } catch (err) {
       logger.warn('Error reading implementation status report', { error: err.message });
+      debugLogger.error('Implementation report read error', {
+        error: err.message,
+        stack: err.stack
+      });
     }
+    
+    // Log success
+    logger.info('Implementation status retrieved successfully');
+    debugLogger.debug('Implementation status data', { 
+      totalIssues: implementationStatus.totalIssues,
+      openIssues: implementationStatus.openIssues,
+      modules: Object.keys(implementationStatus.byModule)
+    });
     
     res.json({ success: true, implementationStatus });
   } catch (error) {
-    logger.error('Error getting implementation status', { error: error.message });
+    // Enhanced error logging with detailed diagnostics
+    const errorDetails = {
+      endpoint: 'getImplementationStatus',
+      message: error.message,
+      status: error.status,
+      response: error.response ? {
+        data: error.response.data,
+        status: error.response.status,
+        headers: error.response.headers
+      } : null,
+      tokenDiagnosis: tokenDiagnosis
+    };
+    
+    logger.error(`Error getting implementation status: ${error.message}`);
+    debugLogger.error('GitHub implementation status API error', errorDetails);
+    
+    // Return detailed error to help debugging
+    res.status(error.status || 500).json({ 
+      success: false, 
+      error: error.message,
+      tokenIssue: tokenDiagnosis ? tokenDiagnosis.description : null,
+      resolution: tokenDiagnosis ? tokenDiagnosis.resolution : null
+    });
+  }
+});
+
+/**
+ * Get pull requests from a GitHub repository
+ */
+app.post('/getPullRequests', async (req, res) => {
+  try {
+    const { state = 'open', sort = 'updated', limit = 10 } = req.body;
+    const config = { ...defaultConfig, ...req.body };
+    
+    logger.info('Getting pull requests', { owner: config.owner, repo: config.repo, state, sort });
+    
+    const params = {
+      owner: config.owner,
+      repo: config.repo,
+      state,
+      sort,
+      direction: 'desc',
+      per_page: limit
+    };
+    
+    const { data } = await octokit.pulls.list(params);
+    
+    // Format the response
+    const pullRequests = data.map(pr => ({
+      number: pr.number,
+      title: pr.title,
+      state: pr.state,
+      url: pr.html_url,
+      created_at: pr.created_at,
+      updated_at: pr.updated_at,
+      merged_at: pr.merged_at,
+      body: pr.body,
+      user: {
+        login: pr.user.login,
+        avatar_url: pr.user.avatar_url
+      },
+      head: pr.head.ref,
+      base: pr.base.ref,
+      draft: pr.draft,
+      mergeable: pr.mergeable
+    }));
+    
+    res.json({ success: true, pullRequests });
+  } catch (error) {
+    logger.error('Error getting pull requests', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Get a specific GitHub pull request by number
+ */
+app.post('/getPullRequest', async (req, res) => {
+  try {
+    const { prNumber } = req.body;
+    const config = { ...defaultConfig, ...req.body };
+    
+    if (!prNumber) {
+      return res.status(400).json({ success: false, error: 'Pull request number is required' });
+    }
+    
+    logger.info('Getting pull request', { owner: config.owner, repo: config.repo, prNumber });
+    
+    const { data } = await octokit.pulls.get({
+      owner: config.owner,
+      repo: config.repo,
+      pull_number: prNumber
+    });
+    
+    // Format the response
+    const pullRequest = {
+      number: data.number,
+      title: data.title,
+      state: data.state,
+      url: data.html_url,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      merged_at: data.merged_at,
+      body: data.body,
+      user: {
+        login: data.user.login,
+        avatar_url: data.user.avatar_url
+      },
+      head: data.head.ref,
+      base: data.base.ref,
+      draft: data.draft,
+      mergeable: data.mergeable,
+      mergeable_state: data.mergeable_state,
+      labels: data.labels.map(label => label.name),
+      requested_reviewers: data.requested_reviewers.map(reviewer => reviewer.login)
+    };
+    
+    res.json({ success: true, pullRequest });
+  } catch (error) {
+    logger.error('Error getting pull request', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Create a new GitHub pull request
+ */
+app.post('/createPullRequest', async (req, res) => {
+  try {
+    const { title, body, head, base = 'main', draft = false } = req.body;
+    const config = { ...defaultConfig, ...req.body };
+    
+    if (!title) {
+      return res.status(400).json({ success: false, error: 'Title is required' });
+    }
+    
+    if (!head) {
+      return res.status(400).json({ success: false, error: 'Head branch is required' });
+    }
+    
+    logger.info('Creating pull request', { owner: config.owner, repo: config.repo, title, head, base });
+    
+    const params = {
+      owner: config.owner,
+      repo: config.repo,
+      title,
+      body,
+      head,
+      base,
+      draft
+    };
+    
+    const { data } = await octokit.pulls.create(params);
+    
+    res.json({
+      success: true,
+      pullRequest: {
+        number: data.number,
+        title: data.title,
+        url: data.html_url,
+        state: data.state
+      }
+    });
+  } catch (error) {
+    logger.error('Error creating pull request', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Get files changed in a pull request
+ */
+app.post('/getFilesChanged', async (req, res) => {
+  try {
+    const { prNumber } = req.body;
+    const config = { ...defaultConfig, ...req.body };
+    
+    if (!prNumber) {
+      return res.status(400).json({ success: false, error: 'Pull request number is required' });
+    }
+    
+    logger.info('Getting files changed', { owner: config.owner, repo: config.repo, prNumber });
+    
+    const { data } = await octokit.pulls.listFiles({
+      owner: config.owner,
+      repo: config.repo,
+      pull_number: prNumber
+    });
+    
+    // Format the response
+    const files = data.map(file => ({
+      filename: file.filename,
+      status: file.status, // added, modified, removed
+      additions: file.additions,
+      deletions: file.deletions,
+      changes: file.changes,
+      patch: file.patch
+    }));
+    
+    res.json({ success: true, files });
+  } catch (error) {
+    logger.error('Error getting files changed', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
 });

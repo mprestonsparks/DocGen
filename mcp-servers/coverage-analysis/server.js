@@ -21,11 +21,20 @@ const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.json()
+    winston.format.colorize({ all: true }),
+    winston.format.printf(({ level, message, timestamp, ...meta }) => {
+      return `${timestamp} ${level}: ${message} ${Object.keys(meta).length ? JSON.stringify(meta, null, 2) : ''}`;
+    })
   ),
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'coverage-analysis-mcp.log' })
+    new winston.transports.File({ 
+      filename: 'coverage-analysis-mcp.log',
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+      )
+    })
   ]
 });
 
@@ -33,12 +42,134 @@ const logger = winston.createLogger({
 const app = express();
 app.use(bodyParser.json());
 
-// Initialize GitHub client if token is available
-let octokit = null;
-if (process.env.GITHUB_TOKEN) {
-  octokit = new Octokit({
-    auth: process.env.GITHUB_TOKEN
+// Configure additional file logger for persistent debugging
+const debugLogDir = path.join(__dirname, '../../logs/mcp-debug');
+if (!fs.existsSync(debugLogDir)) {
+  fs.mkdirSync(debugLogDir, { recursive: true });
+}
+const debugLogPath = path.join(debugLogDir, 'coverage-github-auth.log');
+const debugLogger = winston.createLogger({
+  level: 'debug',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ 
+      filename: debugLogPath,
+      maxsize: 5242880, // 5MB
+      maxFiles: 5
+    })
+  ]
+});
+
+// Function to diagnose token issues
+async function diagnoseTokenIssue(token) {
+  debugLogger.debug('Diagnosing token issue', { 
+    tokenLength: token ? token.length : 0,
+    tokenPrefix: token ? token.substring(0, 4) : 'none',
+    tokenSet: !!token,
+    timestamp: new Date().toISOString()
   });
+  
+  // Check token format
+  if (!token) {
+    return {
+      issue: 'MISSING_TOKEN',
+      description: 'No GitHub token was provided',
+      resolution: 'Set GITHUB_TOKEN in .env file'
+    };
+  }
+  
+  if (token === 'null' || token === 'undefined' || token === '') {
+    return {
+      issue: 'EMPTY_TOKEN',
+      description: 'GitHub token is empty or set to null/undefined',
+      resolution: 'Update GITHUB_TOKEN with a valid token in .env file'
+    };
+  }
+  
+  // Test authentication 
+  try {
+    const octo = new Octokit({ auth: token });
+    const { data } = await octo.rest.users.getAuthenticated();
+    
+    // If we get here, the token is working
+    return {
+      issue: 'NONE',
+      description: 'Token is valid',
+      username: data.login
+    };
+  } catch (error) {
+    // Analyze error to determine cause
+    if (error.status === 401) {
+      return {
+        issue: 'UNAUTHORIZED',
+        description: 'Token is invalid or expired (401 Unauthorized)',
+        errorMessage: error.message,
+        resolution: 'Generate a new token at https://github.com/settings/tokens'
+      };
+    } else if (error.status === 403) {
+      return {
+        issue: 'FORBIDDEN',
+        description: 'Token lacks required permissions (403 Forbidden)',
+        errorMessage: error.message,
+        resolution: 'Generate a new token with repo scope at https://github.com/settings/tokens'
+      };
+    } else {
+      return {
+        issue: 'UNKNOWN_ERROR',
+        description: `Unexpected error (${error.status || 'unknown status'})`,
+        errorMessage: error.message,
+        resolution: 'Check network connectivity and GitHub status'
+      };
+    }
+  }
+}
+
+// Initialize GitHub client with thorough error handling
+let octokit = null;
+let tokenDiagnosis = null;
+
+if (process.env.GITHUB_TOKEN) {
+  try {
+    const token = process.env.GITHUB_TOKEN;
+    
+    // Log token information (safely)
+    debugLogger.debug('Token information', {
+      tokenLength: token ? token.length : 0,
+      tokenPrefix: token ? token.substring(0, 4) : 'none',
+      tokenSet: !!token
+    });
+    
+    // Diagnose token issues
+    tokenDiagnosis = await diagnoseTokenIssue(token);
+    debugLogger.debug('Token diagnosis result', tokenDiagnosis);
+    
+    if (tokenDiagnosis.issue !== 'NONE') {
+      // Log detailed error information
+      logger.error(`GitHub token issue: ${tokenDiagnosis.description}`);
+      logger.error(`Resolution: ${tokenDiagnosis.resolution}`);
+      
+      // Write to debug log
+      debugLogger.error('GitHub authentication failed', tokenDiagnosis);
+      
+      // Continue without mock data - will fail properly
+      octokit = new Octokit({ auth: token });
+    } else {
+      logger.info(`GitHub token validated successfully. Authenticated as ${tokenDiagnosis.username}`);
+      octokit = new Octokit({ auth: token });
+    }
+  } catch (error) {
+    logger.error(`Fatal error initializing GitHub client: ${error.message}`);
+    debugLogger.error('GitHub client initialization error', { 
+      error: error.message,
+      stack: error.stack
+    });
+    
+    // No fallback to mock data - just create a client that will fail appropriately
+    octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+  }
 }
 
 // Default configuration
@@ -93,6 +224,21 @@ app.get('/capabilities', (req, res) => {
         description: 'Get coverage metrics history',
         parameters: {
           days: { type: 'number', description: 'Number of days in history', default: 30 }
+        }
+      },
+      {
+        name: 'getImplementationGaps',
+        description: 'Identify files with implementation gaps using coverage data',
+        parameters: {
+          coveragePath: { type: 'string', description: 'Path to coverage directory', optional: true },
+          threshold: { type: 'number', description: 'Coverage threshold percentage for identifying gaps', default: 80 }
+        }
+      },
+      {
+        name: 'correlateIssuesWithCoverage',
+        description: 'Correlate GitHub issues with coverage metrics',
+        parameters: {
+          issueLabel: { type: 'string', description: 'Label to filter GitHub issues', default: 'implementation-gap' }
         }
       }
     ]
@@ -764,6 +910,235 @@ function getCoverageStatus(current, target) {
  */
 function roundPercentage(percentage) {
   return Math.round(percentage * 100) / 100;
+}
+
+/**
+ * Identify files with implementation gaps using coverage data
+ */
+app.post('/getImplementationGaps', async (req, res) => {
+  try {
+    const { coveragePath, threshold = 80 } = { ...defaultConfig, ...req.body };
+    logger.info('Identifying implementation gaps', { coveragePath, threshold });
+    
+    // Load coverage data
+    const coverageData = loadCoverageData(coveragePath);
+    if (!coverageData) {
+      return res.status(404).json({ success: false, error: 'Coverage data not found' });
+    }
+    
+    // Analyze files for implementation gaps
+    const implementationGaps = [];
+    
+    coverageData.files().forEach(file => {
+      const fileCoverage = coverageData.fileCoverageFor(file);
+      if (fileCoverage) {
+        const metrics = getFileCoverageMetrics(fileCoverage);
+        
+        // Check if any metrics are below threshold
+        if (
+          metrics.statements.percentage < threshold ||
+          metrics.branches.percentage < threshold ||
+          metrics.functions.percentage < threshold ||
+          metrics.lines.percentage < threshold
+        ) {
+          implementationGaps.push({
+            file,
+            metrics,
+            uncoveredLines: metrics.uncoveredLines,
+            gapScore: calculateGapScore(metrics, threshold)
+          });
+        }
+      }
+    });
+    
+    // Sort gaps by gap score (highest first)
+    implementationGaps.sort((a, b) => b.gapScore - a.gapScore);
+    
+    res.json({
+      success: true,
+      threshold,
+      implementationGaps,
+      summary: {
+        totalFiles: coverageData.files().length,
+        filesWithGaps: implementationGaps.length,
+        gapPercentage: roundPercentage((implementationGaps.length / coverageData.files().length) * 100)
+      }
+    });
+  } catch (error) {
+    logger.error('Error identifying implementation gaps', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Correlate GitHub issues with coverage metrics
+ */
+app.post('/correlateIssuesWithCoverage', async (req, res) => {
+  try {
+    const { issueLabel = 'implementation-gap' } = req.body;
+    const config = { ...defaultConfig, ...req.body };
+    
+    if (!octokit) {
+      return res.status(400).json({ success: false, error: 'GitHub token not configured' });
+    }
+    
+    logger.info('Correlating issues with coverage', { issueLabel, owner: config.githubOwner, repo: config.githubRepo });
+    
+    // Load coverage data
+    const coverageData = loadCoverageData(config.coveragePath);
+    if (!coverageData) {
+      return res.status(404).json({ success: false, error: 'Coverage data not found' });
+    }
+    
+    // Get issues with the specified label
+    const { data: issues } = await octokit.issues.listForRepo({
+      owner: config.githubOwner,
+      repo: config.githubRepo,
+      labels: issueLabel,
+      state: 'all',
+      per_page: 100
+    });
+    
+    // Correlate each issue with coverage data
+    const correlations = [];
+    
+    for (const issue of issues) {
+      // Extract file paths mentioned in the issue
+      const fileMatches = issue.body.match(/file: "([^"]+)"/g) || [];
+      const moduleMatches = issue.body.match(/module: "([^"]+)"/g) || [];
+      
+      const relatedFiles = [];
+      
+      // Process file paths
+      fileMatches.forEach(match => {
+        const file = match.match(/file: "([^"]+)"/)[1];
+        const fileCoverage = coverageData.fileCoverageFor(file);
+        if (fileCoverage) {
+          relatedFiles.push({
+            file,
+            metrics: getFileCoverageMetrics(fileCoverage)
+          });
+        }
+      });
+      
+      // Process modules
+      moduleMatches.forEach(match => {
+        const module = match.match(/module: "([^"]+)"/)[1];
+        
+        // Find files that belong to this module
+        coverageData.files().forEach(file => {
+          if (file.includes(module) && !relatedFiles.some(f => f.file === file)) {
+            const fileCoverage = coverageData.fileCoverageFor(file);
+            if (fileCoverage) {
+              relatedFiles.push({
+                file,
+                metrics: getFileCoverageMetrics(fileCoverage)
+              });
+            }
+          }
+        });
+      });
+      
+      // Calculate average coverage for this issue
+      let avgStatementCoverage = 0;
+      let avgBranchCoverage = 0;
+      let avgFunctionCoverage = 0;
+      let avgLineCoverage = 0;
+      
+      if (relatedFiles.length > 0) {
+        avgStatementCoverage = roundPercentage(
+          relatedFiles.reduce((sum, file) => sum + file.metrics.statements.percentage, 0) / relatedFiles.length
+        );
+        
+        avgBranchCoverage = roundPercentage(
+          relatedFiles.reduce((sum, file) => sum + file.metrics.branches.percentage, 0) / relatedFiles.length
+        );
+        
+        avgFunctionCoverage = roundPercentage(
+          relatedFiles.reduce((sum, file) => sum + file.metrics.functions.percentage, 0) / relatedFiles.length
+        );
+        
+        avgLineCoverage = roundPercentage(
+          relatedFiles.reduce((sum, file) => sum + file.metrics.lines.percentage, 0) / relatedFiles.length
+        );
+      }
+      
+      correlations.push({
+        issue: {
+          number: issue.number,
+          title: issue.title,
+          state: issue.state,
+          url: issue.html_url,
+          labels: issue.labels.map(label => label.name)
+        },
+        relatedFiles,
+        averageCoverage: {
+          statements: avgStatementCoverage,
+          branches: avgBranchCoverage,
+          functions: avgFunctionCoverage,
+          lines: avgLineCoverage
+        },
+        implementationStatus: issue.state === 'closed' ? 'Completed' : 'In Progress'
+      });
+    }
+    
+    // Calculate overall statistics
+    const overallStats = {
+      totalIssues: issues.length,
+      openIssues: issues.filter(issue => issue.state === 'open').length,
+      closedIssues: issues.filter(issue => issue.state === 'closed').length,
+      issuesWithCoverage: correlations.filter(corr => corr.relatedFiles.length > 0).length,
+      averageCoverage: {
+        statements: 0,
+        branches: 0,
+        functions: 0,
+        lines: 0
+      }
+    };
+    
+    // Calculate average coverage across all issues
+    const issuesWithCoverage = correlations.filter(corr => corr.relatedFiles.length > 0);
+    if (issuesWithCoverage.length > 0) {
+      overallStats.averageCoverage.statements = roundPercentage(
+        issuesWithCoverage.reduce((sum, corr) => sum + corr.averageCoverage.statements, 0) / issuesWithCoverage.length
+      );
+      
+      overallStats.averageCoverage.branches = roundPercentage(
+        issuesWithCoverage.reduce((sum, corr) => sum + corr.averageCoverage.branches, 0) / issuesWithCoverage.length
+      );
+      
+      overallStats.averageCoverage.functions = roundPercentage(
+        issuesWithCoverage.reduce((sum, corr) => sum + corr.averageCoverage.functions, 0) / issuesWithCoverage.length
+      );
+      
+      overallStats.averageCoverage.lines = roundPercentage(
+        issuesWithCoverage.reduce((sum, corr) => sum + corr.averageCoverage.lines, 0) / issuesWithCoverage.length
+      );
+    }
+    
+    res.json({
+      success: true,
+      correlations,
+      overallStats
+    });
+  } catch (error) {
+    logger.error('Error correlating issues with coverage', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Calculate implementation gap score
+ */
+function calculateGapScore(metrics, threshold) {
+  // Calculate how far each metric is below the threshold
+  const stmtGap = Math.max(0, threshold - metrics.statements.percentage);
+  const branchGap = Math.max(0, threshold - metrics.branches.percentage);
+  const fnGap = Math.max(0, threshold - metrics.functions.percentage);
+  const lineGap = Math.max(0, threshold - metrics.lines.percentage);
+  
+  // Weight the gaps (adjust weights as needed)
+  return (stmtGap * 1.0) + (branchGap * 1.5) + (fnGap * 2.0) + (lineGap * 1.0);
 }
 
 // Start the server

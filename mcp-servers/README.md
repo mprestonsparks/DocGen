@@ -49,23 +49,36 @@ Will automate documentation updates:
    npm install
    ```
 
-2. Set up environment variables:
+2. Create a GitHub Personal Access Token:
+   - Go to [GitHub Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+   - Click "Generate new token" (classic)
+   - Give your token a descriptive name (e.g., "DocGen MCP Server")
+   - Set an expiration date
+   - Select the following scopes/permissions:
+     - `repo` (Full control of private repositories)
+       - This includes issues, pull requests, and repository access
+   - Click "Generate token"
+   - Copy the generated token immediately (you won't be able to see it again)
+
+3. Set up environment variables:
    ```bash
    cp .env.example .env
    # Edit .env file with your configuration
    ```
 
-3. Start the server:
+4. Start the servers using the provided script:
    ```bash
-   npm start
+   # From the project root
+   chmod +x mcp-servers/start-mcp-servers.sh
+   ./mcp-servers/start-mcp-servers.sh
    ```
 
-4. Configure Claude Code to use the server:
+5. Verify the servers are running:
    ```bash
-   claude mcp add github "node server.js" --cwd "/path/to/mcp-servers/github-issues"
+   claude mcp status
    ```
 
-5. Use the server from Claude Code:
+6. Use the server from Claude Code:
    ```
    @github getIssues --labels "implementation-gap"
    ```

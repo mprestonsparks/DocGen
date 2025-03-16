@@ -1,6 +1,6 @@
 # DocGen MCP Servers
 
-This directory contains Model Control Protocol (MCP) servers for enhancing Claude Code functionality with the DocGen project.
+This directory contains Model Context Protocol (MCP) servers for enhancing AI functionality with the DocGen project.
 
 ## What is MCP?
 

@@ -1,6 +1,6 @@
 # Test Coverage Analysis MCP Server for Claude Code
 
-This server implements the Claude Code Model Control Protocol (MCP) interface for analyzing test coverage results and correlating them with implementation issues.
+This server implements the Claude Code Model Context Protocol (MCP) interface for analyzing test coverage results and correlating them with implementation issues.
 
 ## Features
 

@@ -1,6 +1,6 @@
 # GitHub Issues MCP Server for Claude Code
 
-This server implements the Claude Code Model Control Protocol (MCP) interface for interacting with GitHub Issues. It allows Claude to directly query, create, and update GitHub issues during development sessions.
+This server implements the Claude Code Model Context Protocol (MCP) interface for interacting with GitHub Issues. It allows Claude to directly query, create, and update GitHub issues during development sessions.
 
 ## Features
 

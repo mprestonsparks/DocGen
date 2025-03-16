@@ -1,7 +1,7 @@
 /**
  * GitHub Issues MCP Server for Claude Code
  * 
- * This server implements the Claude Code MCP (Model Control Protocol) interface
+ * This server implements the Claude Code MCP (Model Context Protocol) interface
  * for interacting with GitHub Issues.
  */
 

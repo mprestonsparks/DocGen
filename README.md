@@ -1,6 +1,5 @@
 # DocGen - AI-Powered Documentation Template System 
 
-> An intelligent documentation management system with structured templates and AI assistance
 
 <p align="left">
   

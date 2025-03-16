@@ -2,9 +2,7 @@
 
 > An intelligent documentation management system with structured templates and AI assistance
 
-<p align="center">
-  <!-- Essential Badges - Status -->
-  <a href="https://github.com/mprestonsparks/DocGen/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+<p align="left">
   
   <!-- CI/Workflow Status - Only the important ones -->
   <a href="https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml"><img src="https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml/badge.svg?branch=main" alt="Documentation CI"></a>
@@ -24,7 +22,7 @@ DocGen is a comprehensive documentation generation system designed to streamline
   <img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white" alt="Docker Ready">
   <img src="https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen" alt="Node ≥18.0.0">
   <img src="https://img.shields.io/badge/npm-%3E%3D7.0.0-brightgreen" alt="npm ≥7.0.0">
-  <img src="https://img.shields.io/badge/AI-Powered-8A2BE2" alt="AI-Powered">
+  <a href="https://github.com/mprestonsparks/DocGen/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
 </p>
 
 ## Features

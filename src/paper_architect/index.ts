@@ -82,11 +82,19 @@ export async function initializePaperImplementation(
     logger.info('Extracting paper content', { paperFilePath });
     const paperContent = await extraction.extractPaperContent(paperFilePath, mergedOptions.grobidOptions);
     
-    // Create project info
+    // Set default values for paper info in case extraction was incomplete
+    const defaultInfo = {
+      title: 'Untitled Paper',
+      abstract: 'No abstract available',
+      authors: ['Unknown Author'],
+      year: new Date().getFullYear()
+    };
+    
+    // Create project info with fallbacks for missing values
     const projectInfo: ProjectInfo = {
       id: `PAPER-${Math.floor(1000 + Math.random() * 9000)}`,
-      name: paperContent.paperInfo.title,
-      description: paperContent.paperInfo.abstract,
+      name: paperContent.paperInfo?.title || defaultInfo.title,
+      description: paperContent.paperInfo?.abstract || defaultInfo.abstract,
       type: 'ACADEMIC_PAPER',
       created: new Date().toISOString()
     };
@@ -94,14 +102,14 @@ export async function initializePaperImplementation(
     // Generate session ID
     const sessionId = session.generateSessionId(projectInfo.name);
     
-    // Save initial session data
+    // Save initial session data with fallbacks for missing values
     session.saveSession(sessionId, {
       projectInfo,
       interviewAnswers: {
-        'Paper Title': paperContent.paperInfo.title,
-        'Paper Authors': paperContent.paperInfo.authors.join(', '),
-        'Paper Abstract': paperContent.paperInfo.abstract,
-        'Paper Year': String(paperContent.paperInfo.year)
+        'Paper Title': paperContent.paperInfo?.title || defaultInfo.title,
+        'Paper Authors': paperContent.paperInfo?.authors?.join(', ') || defaultInfo.authors.join(', '),
+        'Paper Abstract': paperContent.paperInfo?.abstract || defaultInfo.abstract,
+        'Paper Year': String(paperContent.paperInfo?.year || defaultInfo.year)
       },
       _lastUpdated: new Date().toISOString()
     });

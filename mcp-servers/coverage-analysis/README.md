@@ -9,6 +9,8 @@ This server implements the Claude Code Model Context Protocol (MCP) interface fo
 - Generate markdown coverage reports
 - Analyze issue impact on coverage metrics
 - Track coverage metrics history
+- Identify implementation gaps based on coverage thresholds
+- Correlate GitHub issues with coverage metrics
 - Update GitHub issues with coverage information
 
 ## Installation
@@ -79,12 +81,37 @@ Get coverage metrics history.
 Parameters:
 - `days`: Number of days in history. Default: 30
 
+### POST /getImplementationGaps
+Identify files with implementation gaps based on coverage metrics.
+
+Parameters:
+- `coveragePath`: Path to coverage directory (optional)
+- `threshold`: Coverage threshold percentage for identifying gaps. Default: 80
+
+### POST /correlateIssuesWithCoverage
+Correlate GitHub issues with coverage metrics.
+
+Parameters:
+- `issueLabel`: Label to filter GitHub issues. Default: "implementation-gap"
+
 ## Example Usage from Claude Code
 
 ```
 Let's check our current test coverage metrics.
 
 @coverage getCoverageMetrics
+```
+
+```
+Find files that need implementation improvements.
+
+@coverage getImplementationGaps --threshold 70
+```
+
+```
+Correlate our implementation issues with test coverage.
+
+@coverage correlateIssuesWithCoverage
 ```
 
 ## Integration with DocGen

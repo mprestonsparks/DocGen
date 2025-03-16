@@ -36,3 +36,5 @@ coverage/
 
 # Docker data directories
 .docker/data/
+
+temp/

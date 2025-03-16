@@ -362,6 +362,25 @@ jest.mock('../src/paper_architect/workflow', () => ({
 describe('paper_architect module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Force these mocks to always be called during the test
+    if (typeof fs.existsSync === 'function' && typeof (fs.existsSync as jest.Mock).mockImplementation === 'function') {
+      (fs.existsSync as jest.Mock).mockImplementation((path) => {
+        if (path.includes('/docs/generated/paper') && !path.includes('matrix') && !path.includes('plan')) {
+          return false; // This will force mkdirSync to be called
+        }
+        return true; // Otherwise return true
+      });
+    }
+    
+    // Ensure the mocks are working for these functions
+    if (typeof fs.mkdirSync === 'function') {
+      (fs.mkdirSync as jest.Mock).mockReturnValue(undefined);
+    }
+    
+    if (typeof fs.writeFileSync === 'function') {
+      (fs.writeFileSync as jest.Mock).mockReturnValue(undefined);
+    }
   });
 
   describe('initializePaperImplementation', () => {

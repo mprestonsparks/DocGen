@@ -25,7 +25,17 @@
     "docker:up": "docker-compose -f .docker/docker-compose.yml up -d",
     "docker:down": "docker-compose -f .docker/docker-compose.yml down",
     "docker:shell": "docker-compose -f .docker/docker-compose.yml exec docgen bash",
-    "mcp:start": "chmod +x mcp-servers/start-mcp-servers.sh && ./mcp-servers/start-mcp-servers.sh"
+    "mcp:start": "chmod +x mcp-servers/start-mcp-servers.sh && ./mcp-servers/start-mcp-servers.sh",
+    "github:status": "ts-node scripts/github-issues-workflow.ts status",
+    "github:issues": "ts-node scripts/github-issues-workflow.ts issues",
+    "github:gaps": "ts-node scripts/github-issues-workflow.ts gaps",
+    "github:correlate": "ts-node scripts/github-issues-workflow.ts correlate",
+    "github:update-all": "ts-node scripts/github-issues-workflow.ts update-all-issues",
+    "github:coverage-report": "ts-node scripts/github-issues-workflow.ts coverage-report",
+    "github:help": "ts-node scripts/github-issues-workflow.ts help-claude",
+    "github:workflow": "./scripts/run-github-workflow.sh",
+    "claude:workflow": "node scripts/claude-workflow-manager.cjs",
+    "get-to-work": "node scripts/claude-workflow-manager.cjs"
   },
   "repository": {
     "type": "git",
@@ -41,6 +51,8 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "axios": "^1.8.3",
+    "chalk": "^5.4.1",
     "commander": "^13.1.0",
     "dotenv": "^16.4.7",
     "handlebars": "^4.7.7",
@@ -60,6 +72,7 @@
     "eslint": "^8.38.0",
     "jest": "^29.5.0",
     "ts-jest": "^29.1.0",
+    "ts-morph": "^25.0.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.8.2"
   },

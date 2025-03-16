@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
 
 // Support for ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -74,6 +75,7 @@ async function generateReports() {
   await generateCompletionReport(documents);
   await generateTraceabilityReport(documents);
   await generateCrossReferenceReport(documents);
+  await incorporateTodoReports();
   
   // Generate JSON status report
   const statusReport = {
@@ -376,6 +378,114 @@ async function generateCrossReferenceReport(documents) {
   console.log(`✅ Cross-reference report generated at ${reportPath}`);
   
   return reportPath;
+}
+
+/**
+ * Incorporate TODO validation reports into the documentation
+ */
+async function incorporateTodoReports() {
+  console.log('Incorporating TODO validation reports...');
+  
+  const basicTodoReportPath = path.join(REPORTS_DIR, 'todo-report.md');
+  const enhancedTodoReportPath = path.join(REPORTS_DIR, 'enhanced-todo-report.md');
+  
+  // Check if TODO reports exist
+  let todoReportsExist = false;
+  if (fs.existsSync(basicTodoReportPath) || fs.existsSync(enhancedTodoReportPath)) {
+    todoReportsExist = true;
+  }
+  
+  // Generate missing TODO reports if needed
+  if (!todoReportsExist) {
+    console.log('No existing TODO reports found. Generating them now...');
+    
+    // Create a promise to run the todo validation scripts
+    const runValidators = new Promise((resolve, reject) => {
+      // Run the basic todo validator first
+      exec('npm run validate-todos', { cwd: path.join(__dirname, '..') }, (error, stdout, stderr) => {
+        if (error) {
+          console.warn('Warning: Basic TODO validator failed:', stderr);
+          // Continue with enhanced validator even if basic fails
+        }
+        
+        // Then run the enhanced todo validator
+        exec('npm run enhanced-validate-todos', { cwd: path.join(__dirname, '..') }, (enhancedError, enhancedStdout, enhancedStderr) => {
+          if (enhancedError) {
+            console.warn('Warning: Enhanced TODO validator failed:', enhancedStderr);
+            // We'll still resolve since we want to continue the report generation
+          }
+          
+          resolve();
+        });
+      });
+    });
+    
+    // Wait for validators to complete
+    await runValidators;
+  }
+  
+  // Create an implementation status report that combines the data
+  const statusReportPath = path.join(REPORTS_DIR, 'implementation-status.md');
+  let statusReport = `# Implementation Status Report\n\n`;
+  statusReport += `Generated: ${new Date().toISOString()}\n\n`;
+  
+  // Add links to the detailed reports
+  statusReport += `## Available Reports\n\n`;
+  
+  if (fs.existsSync(basicTodoReportPath)) {
+    statusReport += `- [Basic TODO Validation Report](./todo-report.md)\n`;
+  }
+  
+  if (fs.existsSync(enhancedTodoReportPath)) {
+    statusReport += `- [Enhanced TODO Validation Report](./enhanced-todo-report.md)\n`;
+  }
+  
+  // Add summary from the enhanced report if available
+  if (fs.existsSync(enhancedTodoReportPath)) {
+    try {
+      const enhancedContent = fs.readFileSync(enhancedTodoReportPath, 'utf8');
+      
+      // Extract summary section
+      const summaryMatch = enhancedContent.match(/## Summary\s+([\s\S]*?)(?=\n## |$)/);
+      if (summaryMatch && summaryMatch[1]) {
+        statusReport += `\n## Implementation Summary\n\n${summaryMatch[1].trim()}\n\n`;
+      }
+      
+      // Extract severity breakdown
+      const severityMatch = enhancedContent.match(/## Severity Breakdown\s+([\s\S]*?)(?=\n## |$)/);
+      if (severityMatch && severityMatch[1]) {
+        statusReport += `## Implementation Issues by Severity\n\n${severityMatch[1].trim()}\n\n`;
+      }
+    } catch (error) {
+      console.warn('Error extracting data from enhanced TODO report:', error.message);
+    }
+  } else if (fs.existsSync(basicTodoReportPath)) {
+    // If enhanced report isn't available, try to extract from basic report
+    try {
+      const basicContent = fs.readFileSync(basicTodoReportPath, 'utf8');
+      
+      // Extract summary section
+      const summaryMatch = basicContent.match(/## Summary\s+([\s\S]*?)(?=\n## |$)/);
+      if (summaryMatch && summaryMatch[1]) {
+        statusReport += `\n## Implementation Summary\n\n${summaryMatch[1].trim()}\n\n`;
+      }
+    } catch (error) {
+      console.warn('Error extracting data from basic TODO report:', error.message);
+    }
+  }
+  
+  // Add implementation recommendations
+  statusReport += `## Implementation Recommendations\n\n`;
+  statusReport += `1. **Address High Severity Issues First**: Focus on high severity TODOs first as they typically indicate critical functionality gaps.\n\n`;
+  statusReport += `2. **Maintain Documentation-Code Sync**: Ensure implementation matches documented requirements and design.\n\n`;
+  statusReport += `3. **Test Coverage**: Add tests for all implemented features, particularly focusing on areas flagged by the TODO validator.\n\n`;
+  statusReport += `4. **Regular Validation**: Run \`npm run monitor\` regularly to track implementation progress.\n\n`;
+  
+  // Write the implementation status report
+  fs.writeFileSync(statusReportPath, statusReport);
+  console.log(`✅ Implementation status report generated at ${statusReportPath}`);
+  
+  return statusReportPath;
 }
 
 // Run the report generation

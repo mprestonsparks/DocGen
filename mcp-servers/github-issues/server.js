@@ -10,6 +10,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { Octokit } = require('@octokit/rest');
 const winston = require('winston');
+const fs = require('fs');
+const path = require('path');
 
 // Configure logger
 const logger = winston.createLogger({
@@ -326,12 +328,39 @@ app.post('/getImplementationStatus', async (req, res) => {
       labels: 'implementation-gap'
     });
     
+    // Get coverage-improvement labeled issues
+    const { data: coverageIssues } = await octokit.issues.listForRepo({
+      owner: config.owner,
+      repo: config.repo,
+      labels: 'coverage-improvement'
+    });
+    
+    // Get monitoring-system labeled issues
+    const { data: monitoringIssues } = await octokit.issues.listForRepo({
+      owner: config.owner,
+      repo: config.repo,
+      labels: 'monitoring-system'
+    });
+    
     // Process issues to extract implementation status
     const implementationStatus = {
       totalIssues: issues.length,
       openIssues: issues.filter(issue => issue.state === 'open').length,
       closedIssues: issues.filter(issue => issue.state === 'closed').length,
-      byModule: {}
+      byModule: {},
+      
+      // Additional statistics
+      coverageIssues: {
+        total: coverageIssues.length,
+        open: coverageIssues.filter(issue => issue.state === 'open').length,
+        closed: coverageIssues.filter(issue => issue.state === 'closed').length
+      },
+      
+      monitoringIssues: {
+        total: monitoringIssues.length,
+        open: monitoringIssues.filter(issue => issue.state === 'open').length,
+        closed: monitoringIssues.filter(issue => issue.state === 'closed').length
+      }
     };
     
     // Extract module information from issue bodies
@@ -357,6 +386,31 @@ app.post('/getImplementationStatus', async (req, res) => {
         }
       }
     });
+    
+    // Read implementation status report if available
+    try {
+      const reportsPath = path.join(__dirname, '../../docs/reports');
+      const implementationReportPath = path.join(reportsPath, 'implementation-status.md');
+      
+      if (fs.existsSync(implementationReportPath)) {
+        const reportContent = fs.readFileSync(implementationReportPath, 'utf8');
+        implementationStatus.statusReport = reportContent;
+        
+        // Try to extract metrics from the report
+        const todoCountMatch = reportContent.match(/Existing TODOs:\s*(\d+)/);
+        const missingTodoMatch = reportContent.match(/Missing TODOs:\s*(\d+)/);
+        
+        if (todoCountMatch && todoCountMatch[1]) {
+          implementationStatus.existingTodos = parseInt(todoCountMatch[1]);
+        }
+        
+        if (missingTodoMatch && missingTodoMatch[1]) {
+          implementationStatus.missingTodos = parseInt(missingTodoMatch[1]);
+        }
+      }
+    } catch (err) {
+      logger.warn('Error reading implementation status report', { error: err.message });
+    }
     
     res.json({ success: true, implementationStatus });
   } catch (error) {

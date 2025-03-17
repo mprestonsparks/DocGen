@@ -5,13 +5,13 @@
  * for interacting with GitHub Issues.
  */
 
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Octokit } = require('@octokit/rest');
 const winston = require('winston');
 const fs = require('fs');
-const path = require('path');
 
 // Configure logger
 const logger = winston.createLogger({

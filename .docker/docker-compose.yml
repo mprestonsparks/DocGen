@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   docgen:
     build:
@@ -8,32 +6,27 @@ services:
     volumes:
       - ..:/app
       - node_modules:/app/node_modules
+      - python_cache:/root/.cache/pip
     environment:
       - NODE_ENV=development
-      # Add other environment variables as needed
-      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    depends_on:
-      - grobid
-    # Uncomment if you need to expose a port
-    # ports:
-    #   - "3000:3000"
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_OWNER=${GITHUB_OWNER:-}
+      - GITHUB_REPO=${GITHUB_REPO:-}
+      - MCP_SERVER_PORT=7867
+      - MCP_SERVER_HOST=0.0.0.0
+      - COVERAGE_SERVER_PORT=7868
+    ports:
+      - "7867:7867"
+      - "7868:7868"
     tty: true
     stdin_open: true
-
-  # GROBID service for paper_architect module
-  grobid:
-    image: grobid/grobid:0.7.2
-    ports:
-      - "8070:8070"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8070/api/version"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    volumes:
-      - grobid_data:/opt/grobid/grobid-home/tmp
+    networks:
+      - docgen_network
 
 volumes:
   node_modules:
-  grobid_data:
+  python_cache:
+
+networks:
+  docgen_network:
+    driver: bridge

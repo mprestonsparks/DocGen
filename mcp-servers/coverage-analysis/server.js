@@ -5,11 +5,11 @@
  * for analyzing test coverage and correlating it with implementation issues.
  */
 
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
-const path = require('path');
 const winston = require('winston');
 const istanbulLibCoverage = require('istanbul-lib-coverage');
 const istanbulLibReport = require('istanbul-lib-report');

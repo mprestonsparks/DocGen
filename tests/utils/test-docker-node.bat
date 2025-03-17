@@ -1,0 +1,3 @@
+@echo off
+echo Testing Node.js in Docker...
+docker exec docker-docgen-1 node -e "console.log('Node.js is working in Docker!')"

@@ -1,0 +1,3 @@
+@echo off
+echo Testing Python in Docker...
+docker exec docker-docgen-1 python3 -c "print('Python is working in Docker!')"

@@ -4,6 +4,7 @@
 # Set variable for script directory
 SCRIPT_DIR="$(dirname "$0")"
 LOG_DIR="$SCRIPT_DIR/../logs/mcp-debug"
+ROOT_ENV_FILE="$SCRIPT_DIR/../.env"
 
 # Create log directory if it doesn't exist
 mkdir -p "$LOG_DIR"
@@ -155,7 +156,7 @@ stop_mcp_servers() {
   log "INFO" "All MCP servers stopped"
 }
 
-# Check and install dependencies
+# Setup dependencies
 setup_dependencies() {
   log "INFO" "Setting up MCP server dependencies..."
   
@@ -184,51 +185,48 @@ setup_dependencies() {
   return 0
 }
 
-# Setup environment files
-setup_env_files() {
-  local github_env="$SCRIPT_DIR/github-issues/.env"
-  local coverage_env="$SCRIPT_DIR/coverage-analysis/.env"
-  local github_example="$SCRIPT_DIR/github-issues/.env.example"
-  local coverage_example="$SCRIPT_DIR/coverage-analysis/.env.example"
+# Verify required environment variables
+verify_env_variables() {
+  log "INFO" "Verifying environment variables from root .env file..."
   
-  # GitHub Issues MCP
-  if [[ ! -f "$github_env" ]]; then
-    log "INFO" "Creating .env file for GitHub Issues MCP server..."
-    if [[ -f "$github_example" ]]; then
-      cp "$github_example" "$github_env"
-      log "INFO" "Created from example template"
-    else
-      echo "GITHUB_TOKEN=your_token_here" > "$github_env"
-      echo "GITHUB_OWNER=mprestonsparks" >> "$github_env"
-      echo "GITHUB_REPO=DocGen" >> "$github_env"
-      log "INFO" "Created with default values"
-    fi
-    log "WARNING" "Please edit $github_env and add your GitHub token"
+  # Check if root .env file exists
+  if [[ ! -f "$ROOT_ENV_FILE" ]]; then
+    log "ERROR" "Root .env file not found at $ROOT_ENV_FILE"
+    log "INFO" "Please create a .env file in the project root with required variables"
+    return 1
   fi
   
-  # Coverage Analysis MCP
-  if [[ ! -f "$coverage_env" ]]; then
-    log "INFO" "Creating .env file for Coverage Analysis MCP server..."
-    if [[ -f "$coverage_example" ]]; then
-      cp "$coverage_example" "$coverage_env"
-      log "INFO" "Created from example template"
-    else
-      echo "GITHUB_TOKEN=your_token_here" > "$coverage_env"
-      echo "GITHUB_OWNER=mprestonsparks" >> "$coverage_env"
-      echo "GITHUB_REPO=DocGen" >> "$coverage_env"
-      echo "COVERAGE_PATH=coverage" >> "$coverage_env"
-      echo "OUTPUT_PATH=docs/reports" >> "$coverage_env"
-      log "INFO" "Created with default values"
-    fi
-    log "WARNING" "Please edit $coverage_env and add your GitHub token"
+  # Load environment variables from root .env file
+  set -a
+  source "$ROOT_ENV_FILE"
+  set +a
+  
+  log "INFO" "Loaded environment from root .env file"
+  
+  # Check required variables
+  if [[ -z "$GITHUB_TOKEN" ]]; then
+    log "ERROR" "GITHUB_TOKEN is not set in $ROOT_ENV_FILE"
+    return 1
+  fi
+  
+  if [[ -z "$GITHUB_OWNER" || -z "$GITHUB_REPO" ]]; then
+    log "ERROR" "GITHUB_OWNER or GITHUB_REPO not set in $ROOT_ENV_FILE"
+    return 1
+  fi
+  
+  if [[ -z "$MCP_SERVER_PORT" ]]; then
+    log "WARNING" "MCP_SERVER_PORT not set in $ROOT_ENV_FILE, using default port 7867"
+    export MCP_SERVER_PORT=7867
   fi
   
   # Test the GitHub token
   log "INFO" "Validating GitHub token..."
-  if ! test_github_token "$github_env"; then
+  if ! test_github_token "$ROOT_ENV_FILE"; then
     log "WARNING" "GitHub authentication may fail. See errors above."
     log "INFO" "For detailed diagnostics, run: node $SCRIPT_DIR/../scripts/diagnose-github-token.cjs"
   fi
+  
+  return 0
 }
 
 # Generate coverage data
@@ -260,13 +258,14 @@ setup_coverage_data() {
 start_github_mcp() {
   local pid_file="$SCRIPT_DIR/github-mcp-server.pid"
   local log_file="$LOG_DIR/github-mcp-output.log"
+  local github_port=${MCP_SERVER_PORT:-7867}
   
   if is_server_running "GitHub Issues MCP" "$pid_file" "node.*github-issues/server"; then
     log "INFO" "GitHub Issues MCP is already running"
     return 0
   fi
   
-  log "INFO" "Starting GitHub Issues MCP server..."
+  log "INFO" "Starting GitHub Issues MCP server on port $github_port..."
   
   # Create log directories if they don't exist
   mkdir -p "$(dirname "$log_file")" 
@@ -276,15 +275,16 @@ start_github_mcp() {
   # Use .cjs extension for CommonJS, .mjs for ESM
   if [[ -f "$SCRIPT_DIR/github-issues/server.cjs" ]]; then
     log "INFO" "Using CommonJS with .cjs extension"
-    (cd "$SCRIPT_DIR/github-issues" && node server.cjs > "$log_file" 2>&1) &
+    (cd "$SCRIPT_DIR/github-issues" && PORT=$github_port node server.cjs > "$log_file" 2>&1) &
     local pid=$!
   elif [[ -f "$SCRIPT_DIR/github-issues/server.mjs" ]]; then
     log "INFO" "Using ESM version (server.mjs)"
-    (cd "$SCRIPT_DIR/github-issues" && node server.mjs > "$log_file" 2>&1) &
+    (cd "$SCRIPT_DIR/github-issues" && PORT=$github_port node server.mjs > "$log_file" 2>&1) &
     local pid=$!
   else
-    log "ERROR" "No server implementation found"
-    return 1
+    log "INFO" "Using default server.js"
+    (cd "$SCRIPT_DIR/github-issues" && PORT=$github_port node server.js > "$log_file" 2>&1) &
+    local pid=$!
   fi
   
   # Save PID file
@@ -296,7 +296,7 @@ start_github_mcp() {
     log "SUCCESS" "GitHub Issues MCP server started with PID: $pid"
     
     # Check if server is responding
-    local status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/capabilities 2>/dev/null)
+    local status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$github_port/capabilities 2>/dev/null)
     if [[ "$status" == "200" ]]; then
       log "SUCCESS" "GitHub Issues MCP server is responding correctly"
     else
@@ -321,13 +321,14 @@ start_github_mcp() {
 start_coverage_mcp() {
   local pid_file="$SCRIPT_DIR/coverage-mcp-server.pid"
   local log_file="$LOG_DIR/coverage-mcp-output.log"
+  local coverage_port=$((MCP_SERVER_PORT + 1))
   
   if is_server_running "Coverage Analysis MCP" "$pid_file" "node.*coverage-analysis/server"; then
     log "INFO" "Coverage Analysis MCP is already running"
     return 0
   fi
   
-  log "INFO" "Starting Coverage Analysis MCP server..."
+  log "INFO" "Starting Coverage Analysis MCP server on port $coverage_port..."
   
   # Create log directories if they don't exist and ensure the log file exists
   mkdir -p "$(dirname "$log_file")" 
@@ -337,15 +338,16 @@ start_coverage_mcp() {
   # Use .cjs extension for CommonJS, .mjs for ESM
   if [[ -f "$SCRIPT_DIR/coverage-analysis/server.cjs" ]]; then
     log "INFO" "Using CommonJS with .cjs extension"
-    (cd "$SCRIPT_DIR/coverage-analysis" && node server.cjs > "$log_file" 2>&1) &
+    (cd "$SCRIPT_DIR/coverage-analysis" && PORT=$coverage_port node server.cjs > "$log_file" 2>&1) &
     local pid=$!
   elif [[ -f "$SCRIPT_DIR/coverage-analysis/server.mjs" ]]; then
     log "INFO" "Using ESM version (server.mjs)"
-    (cd "$SCRIPT_DIR/coverage-analysis" && node server.mjs > "$log_file" 2>&1) &
+    (cd "$SCRIPT_DIR/coverage-analysis" && PORT=$coverage_port node server.mjs > "$log_file" 2>&1) &
     local pid=$!
   else
-    log "ERROR" "No server implementation found"
-    return 1
+    log "INFO" "Using default server.js"
+    (cd "$SCRIPT_DIR/coverage-analysis" && PORT=$coverage_port node server.js > "$log_file" 2>&1) &
+    local pid=$!
   fi
   
   # Save PID file
@@ -357,7 +359,7 @@ start_coverage_mcp() {
     log "SUCCESS" "Coverage Analysis MCP server started with PID: $pid"
     
     # Check if server is responding
-    local status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/capabilities 2>/dev/null)
+    local status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$coverage_port/capabilities 2>/dev/null)
     if [[ "$status" == "200" ]]; then
       log "SUCCESS" "Coverage Analysis MCP server is responding correctly"
     else
@@ -431,7 +433,7 @@ main() {
   
   # Setup steps
   setup_dependencies || log "WARNING" "Dependency setup encountered issues"
-  setup_env_files
+  verify_env_variables
   setup_coverage_data
   
   # Start servers

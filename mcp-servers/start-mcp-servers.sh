@@ -261,16 +261,31 @@ start_github_mcp() {
   local pid_file="$SCRIPT_DIR/github-mcp-server.pid"
   local log_file="$LOG_DIR/github-mcp-output.log"
   
-  if is_server_running "GitHub Issues MCP" "$pid_file" "node.*github-issues/server.js"; then
+  if is_server_running "GitHub Issues MCP" "$pid_file" "node.*github-issues/server"; then
     log "INFO" "GitHub Issues MCP is already running"
     return 0
   fi
   
   log "INFO" "Starting GitHub Issues MCP server..."
   
-  # Change to directory and run
-  (cd "$SCRIPT_DIR/github-issues" && node server.js > "$log_file" 2>&1) &
-  local pid=$!
+  # Create log directories if they don't exist
+  mkdir -p "$(dirname "$log_file")" 
+  mkdir -p "$LOG_DIR"
+  touch "$log_file"
+  
+  # Use .cjs extension for CommonJS, .mjs for ESM
+  if [[ -f "$SCRIPT_DIR/github-issues/server.cjs" ]]; then
+    log "INFO" "Using CommonJS with .cjs extension"
+    (cd "$SCRIPT_DIR/github-issues" && node server.cjs > "$log_file" 2>&1) &
+    local pid=$!
+  elif [[ -f "$SCRIPT_DIR/github-issues/server.mjs" ]]; then
+    log "INFO" "Using ESM version (server.mjs)"
+    (cd "$SCRIPT_DIR/github-issues" && node server.mjs > "$log_file" 2>&1) &
+    local pid=$!
+  else
+    log "ERROR" "No server implementation found"
+    return 1
+  fi
   
   # Save PID file
   echo "GitHub Server PID: $pid" > "$pid_file"
@@ -307,16 +322,31 @@ start_coverage_mcp() {
   local pid_file="$SCRIPT_DIR/coverage-mcp-server.pid"
   local log_file="$LOG_DIR/coverage-mcp-output.log"
   
-  if is_server_running "Coverage Analysis MCP" "$pid_file" "node.*coverage-analysis/server.js"; then
+  if is_server_running "Coverage Analysis MCP" "$pid_file" "node.*coverage-analysis/server"; then
     log "INFO" "Coverage Analysis MCP is already running"
     return 0
   fi
   
   log "INFO" "Starting Coverage Analysis MCP server..."
   
-  # Change to directory and run
-  (cd "$SCRIPT_DIR/coverage-analysis" && node server.js > "$log_file" 2>&1) &
-  local pid=$!
+  # Create log directories if they don't exist and ensure the log file exists
+  mkdir -p "$(dirname "$log_file")" 
+  mkdir -p "$LOG_DIR"
+  touch "$log_file"
+  
+  # Use .cjs extension for CommonJS, .mjs for ESM
+  if [[ -f "$SCRIPT_DIR/coverage-analysis/server.cjs" ]]; then
+    log "INFO" "Using CommonJS with .cjs extension"
+    (cd "$SCRIPT_DIR/coverage-analysis" && node server.cjs > "$log_file" 2>&1) &
+    local pid=$!
+  elif [[ -f "$SCRIPT_DIR/coverage-analysis/server.mjs" ]]; then
+    log "INFO" "Using ESM version (server.mjs)"
+    (cd "$SCRIPT_DIR/coverage-analysis" && node server.mjs > "$log_file" 2>&1) &
+    local pid=$!
+  else
+    log "ERROR" "No server implementation found"
+    return 1
+  fi
   
   # Save PID file
   echo "Coverage Server PID: $pid" > "$pid_file"

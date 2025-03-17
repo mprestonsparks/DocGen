@@ -12,7 +12,7 @@
   <a href="https://github.com/mprestonsparks/DocGen/blob/main/tests/README.md"><img src="https://img.shields.io/badge/Tests-308_passed-success" alt="308 Tests"></a>
 </p>
 
-DocGen is a comprehensive documentation generation system designed to streamline the creation of high-quality software project documentation. Leveraging AI-powered interviews and structured templates, it guides developers through the documentation process while ensuring consistency, completeness, and cross-referencing integrity.
+DocGen is a documentation generation system designed to streamline the creation of high-quality software project documentation. Leveraging AI-powered interviews and structured templates, it guides developers through the documentation process while ensuring consistency, completeness, and cross-referencing integrity.
 
 <p align="left">
   <img src="https://img.shields.io/badge/npm-%3E%3D7.0.0-brightgreen" alt="npm ≥7.0.0">

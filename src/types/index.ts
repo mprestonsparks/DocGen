@@ -483,8 +483,11 @@ export interface PaperAlgorithm {
 export interface PaperEquation {
   id: string;
   content: string;
-  description?: string;
+  interpretation?: string;
+  variables?: Record<string, string>;
+  field?: string;
   sectionId: string;
+  type?: 'inline' | 'display' | 'unknown';
   pageNumber?: number;
 }
 
@@ -495,7 +498,11 @@ export interface PaperFigure {
   id: string;
   caption: string;
   content?: string;
-  description?: string;
+  url?: string;
+  label?: string;
+  figureType?: string;
+  keyPoints?: string[];
+  relatedElements?: string[];
   sectionId: string;
   pageNumber?: number;
 }
@@ -507,7 +514,10 @@ export interface PaperTable {
   id: string;
   caption: string;
   rows: string[][];
-  description?: string;
+  label?: string;
+  columnDescriptions?: Record<string, string>;
+  summary?: string;
+  keyFindings?: string[];
   sectionId: string;
   pageNumber?: number;
 }
@@ -518,8 +528,14 @@ export interface PaperTable {
 export interface PaperCitation {
   id: string;
   text: string;
+  authors?: string[];
+  title?: string;
+  venue?: string;
+  year?: number;
   doi?: string;
   url?: string;
+  formattedCitation?: string;
+  journal?: string;
 }
 
 /**

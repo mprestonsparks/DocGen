@@ -236,7 +236,7 @@ if [ $tests_passing -eq 0 ]; then
     
     # Create log directory if it doesn't exist
     mkdir -p logs/workflow
-    local workflow_log="logs/workflow/manager-output.log"
+    workflow_log="logs/workflow/manager-output.log"
     
     # Run workflow manager with output capture
     node scripts/claude-workflow-manager.cjs > "$workflow_log" 2>&1
@@ -244,14 +244,22 @@ if [ $tests_passing -eq 0 ]; then
     
     if [ $workflow_exit_code -ne 0 ]; then
       echo -e "${RED}Workflow manager encountered errors${NC}"
-      echo -e "${YELLOW}Last 5 lines of workflow log:${NC}"
-      tail -n 5 "$workflow_log"
-      echo -e "\n${BLUE}Complete workflow logs available at: ${CYAN}$workflow_log${NC}"
+      if [ -f "$workflow_log" ]; then
+        echo -e "${YELLOW}Last 5 lines of workflow log:${NC}"
+        tail -n 5 "$workflow_log"
+        echo -e "\n${BLUE}Complete workflow logs available at: ${CYAN}$workflow_log${NC}"
+      else
+        echo -e "${YELLOW}Workflow log file not created. Check for script errors.${NC}"
+      fi
     else
       echo -e "${GREEN}Workflow analysis completed successfully${NC}"
       echo -e "${YELLOW}Summary of workflow recommendations:${NC}"
-      grep -A 10 "Recommended next steps" "$workflow_log" | head -n 10
-      echo -e "\n${BLUE}Full workflow report available at: ${CYAN}$workflow_log${NC}"
+      if [ -f "$workflow_log" ]; then
+        grep -A 10 "Recommended next steps" "$workflow_log" | head -n 10
+        echo -e "\n${BLUE}Full workflow report available at: ${CYAN}$workflow_log${NC}"
+      else
+        echo -e "${YELLOW}Workflow log file not created. Check for script errors.${NC}"
+      fi
     fi
   else
     echo -e "\n${YELLOW}Note: For more detailed workflow analysis, implement scripts/claude-workflow-manager.cjs${NC}"

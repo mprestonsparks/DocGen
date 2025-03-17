@@ -145,7 +145,8 @@ function ensureReportDirectory(reportPath: string) {
 /**
  * Main function to validate todos
  */
-async function main() {
+// Export main function for testing
+export async function main() {
   try {
     // Parse command line arguments
     const args = parseArguments();
@@ -205,5 +206,10 @@ async function main() {
   }
 }
 
-// Run the main function
-main();
+// Run the main function if this script is executed directly
+if (require.main === module) {
+  main().catch(error => {
+    console.error('Unhandled error:', error);
+    process.exit(1);
+  });
+}

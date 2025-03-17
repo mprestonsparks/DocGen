@@ -38,7 +38,16 @@ jest.mock('../src/utils/config', () => ({
     maxTokens: 4000,
     temperature: 0.7
   })),
-  isLLMAvailable: jest.fn(() => true)
+  getLLMProviderConfigs: jest.fn(() => ({
+    anthropic: {
+      apiKey: 'mock-api-key',
+      model: 'claude-3-5-sonnet-20240620',
+      maxTokens: 4000,
+      temperature: 0.7
+    }
+  })),
+  isLLMAvailable: jest.fn(() => true),
+  isProviderAvailable: jest.fn(() => true)
 }));
 
 // Mock logger
@@ -73,7 +82,7 @@ describe('LLM Integration Utility', () => {
       expect(Anthropic).toHaveBeenCalledWith({ apiKey: 'mock-api-key' });
       expect(mockMessageCreate).toHaveBeenCalledWith({
         model: 'claude-3-5-sonnet-20240620',
-        max_tokens: 4000,
+        max_tokens: expect.any(Number), // Adaptive token management may change this value
         temperature: 0.7,
         system: expect.any(String),
         messages: [{ role: 'user', content: 'Test prompt' }]
@@ -169,7 +178,7 @@ describe('LLM Integration Utility', () => {
       jest.spyOn(config, 'isLLMAvailable').mockReturnValueOnce(false);
       
       // Execute & Verify
-      await expect(llm.callLLM('Test prompt')).rejects.toThrow('LLM is not available');
+      await expect(llm.callLLM('Test prompt')).rejects.toThrow('No LLM provider is available');
     });
 
     it('should handle errors from the LLM API', async () => {

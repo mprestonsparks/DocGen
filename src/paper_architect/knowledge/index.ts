@@ -393,9 +393,129 @@ function extractConceptsFromSections(paperContent: PaperContent): PaperConcept[]
  * @param concept Paper concept
  * @returns Enhanced concept with ontology mapping
  */
-export function mapToOntology(concept: PaperConcept): PaperConcept {
-  // This is a placeholder for future ontology mapping functionality
-  return concept;
+export function mapToOntology(concept: PaperConcept): PaperConcept & { ontologyMapping: any } {
+  // Create a new object with the original concept properties
+  const enhancedConcept = {
+    ...concept,
+    // Add ontology mapping information
+    ontologyMapping: {
+      domain: determineDomain(concept),
+      category: determineCategory(concept),
+      relationships: []
+    }
+  };
+
+  return enhancedConcept;
+}
+
+/**
+ * Determine the computer science domain for a concept
+ * @param concept Paper concept
+ * @returns Domain classification
+ */
+function determineDomain(concept: PaperConcept): string {
+  const name = concept.name.toLowerCase();
+  const description = concept.description.toLowerCase();
+
+  // Check for ML/AI domain
+  if (
+    name.includes('neural') || name.includes('learning') || name.includes('model') ||
+    description.includes('neural network') || description.includes('machine learning') ||
+    description.includes('deep learning') || description.includes('training')
+  ) {
+    return 'MachineLearning';
+  }
+
+  // Check for algorithms domain
+  if (
+    name.includes('algorithm') || name.includes('search') || 
+    concept.type === 'algorithm' || description.includes('complexity')
+  ) {
+    return 'Algorithms';
+  }
+
+  // Check for data structures domain
+  if (
+    name.includes('tree') || name.includes('graph') || name.includes('hash') ||
+    name.includes('list') || name.includes('queue') || name.includes('stack') ||
+    concept.type === 'dataStructure'
+  ) {
+    return 'DataStructures';
+  }
+
+  // Default domain based on concept type
+  switch (concept.type) {
+    case 'method':
+      return 'SoftwareEngineering';
+    case 'parameter':
+      return 'SystemConfiguration';
+    default:
+      return 'ComputerScience';
+  }
+}
+
+/**
+ * Determine the category within a domain for a concept
+ * @param concept Paper concept
+ * @returns Category classification
+ */
+function determineCategory(concept: PaperConcept): string {
+  const name = concept.name.toLowerCase();
+  const description = concept.description.toLowerCase();
+  
+  // Type-based categorization
+  switch (concept.type) {
+    case 'algorithm':
+      // Subcategorize algorithms
+      if (name.includes('sort') || description.includes('sorting')) {
+        return 'SortingAlgorithm';
+      } else if (name.includes('search') || description.includes('searching')) {
+        return 'SearchAlgorithm';
+      } else if (name.includes('optimization') || description.includes('optimize')) {
+        return 'OptimizationAlgorithm';
+      } else if (name.includes('neural') || description.includes('neural network')) {
+        return 'NeuralNetwork';
+      }
+      return 'Algorithm';
+      
+    case 'method':
+      if (description.includes('preprocessing') || name.includes('preprocess')) {
+        return 'PreprocessingMethod';
+      } else if (description.includes('evaluation') || name.includes('evaluat')) {
+        return 'EvaluationMethod';
+      }
+      return 'Method';
+      
+    case 'dataStructure':
+      // Subcategorize data structures
+      if (name.includes('tree') || description.includes('tree')) {
+        return 'TreeStructure';
+      } else if (name.includes('graph') || description.includes('graph')) {
+        return 'GraphStructure';
+      } else if (name.includes('array') || description.includes('array')) {
+        return 'ArrayStructure';
+      } else if (name.includes('hash') || description.includes('hash')) {
+        return 'HashStructure';
+      }
+      return 'DataStructure';
+      
+    case 'parameter':
+      return 'ConfigurationParameter';
+      
+    case 'concept':
+    default:
+      // Content-based categorization for general concepts
+      if (name.includes('model') || description.includes('model')) {
+        return 'Model';
+      } else if (description.includes('framework') || name.includes('framework')) {
+        return 'Framework';
+      } else if (description.includes('approach') || name.includes('approach')) {
+        return 'Approach';
+      } else if (description.includes('technique') || name.includes('technique')) {
+        return 'Technique';
+      }
+      return 'Concept';
+  }
 }
 
 /**

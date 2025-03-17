@@ -56,7 +56,7 @@
     "commander": "^13.1.0",
     "dotenv": "^16.4.7",
     "handlebars": "^4.7.7",
-    "inquirer": "^12.4.3",
+    "inquirer": "^12.5.0",
     "js-yaml": "^4.1.0",
     "semver": "^7.5.4",
     "winston": "^3.17.0"

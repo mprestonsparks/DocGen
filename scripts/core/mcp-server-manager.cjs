@@ -18,8 +18,41 @@ const axios = require('axios');
 
 // Configuration
 const PROJECT_ROOT = path.resolve(process.cwd());
-const GITHUB_MCP_URL = process.env.GITHUB_MCP_URL || 'http://localhost:7867';
-const COVERAGE_MCP_URL = process.env.COVERAGE_MCP_URL || 'http://localhost:7868';
+
+// Docker environment detection with improved logging
+const isInDocker = fs.existsSync('/.dockerenv') || process.env.MCP_IN_DOCKER === '1';
+const hasMcpDockerFlag = fs.existsSync('/app/mcp-servers/mcp-docker-running') || fs.existsSync(path.join(PROJECT_ROOT, '.mcp-in-docker'));
+
+// Debug information
+console.log(`MCP Server Manager - Environment Detection:`);
+console.log(`- isInDocker: ${isInDocker}`);
+console.log(`- hasMcpDockerFlag: ${hasMcpDockerFlag}`);
+console.log(`- PROJECT_ROOT: ${PROJECT_ROOT}`);
+console.log(`- MCP_IN_DOCKER env var: ${process.env.MCP_IN_DOCKER || 'not set'}`);
+
+// Determine the correct host to use based on environment
+let targetHost = 'localhost';
+
+// If we're running outside Docker and MCP is in Docker, use Docker host
+if (!isInDocker && hasMcpDockerFlag) {
+  targetHost = process.platform === 'win32' ? 'host.docker.internal' : 'host.docker.internal';
+  console.log('Using Docker host for MCP servers');
+} else if (isInDocker) {
+  // If we're in Docker, always use localhost
+  targetHost = 'localhost';
+  console.log('Running in Docker, using localhost for MCP servers');
+} else {
+  // Standard local development
+  targetHost = 'localhost';
+  console.log('Standard environment, using localhost for MCP servers');
+}
+
+// Set URLs with proper host
+const GITHUB_MCP_URL = process.env.GITHUB_MCP_URL || `http://${targetHost}:7866`;
+const COVERAGE_MCP_URL = process.env.COVERAGE_MCP_URL || `http://${targetHost}:7865`;
+
+console.log(`Using GitHub MCP URL: ${GITHUB_MCP_URL}`);
+console.log(`Using Coverage MCP URL: ${COVERAGE_MCP_URL}`);
 
 // ANSI color codes for terminal output
 const colors = {
@@ -42,17 +75,28 @@ async function checkMcpServers() {
     let githubRunning = false;
     let coverageRunning = false;
     
+    // In Docker, we need to check the REST API servers directly
+    const GITHUB_REST_URL = `http://${isInDocker ? 'localhost' : DOCKER_HOST}:7867/capabilities`;
+    const COVERAGE_REST_URL = `http://${isInDocker ? 'localhost' : DOCKER_HOST}:7868/capabilities`;
+    
+    console.log(`Checking GitHub REST API at ${GITHUB_REST_URL}`);
+    console.log(`Checking Coverage REST API at ${COVERAGE_REST_URL}`);
+    
     try {
-      const githubResponse = await axios.get(`${GITHUB_MCP_URL}/capabilities`, { timeout: 2000 });
+      const githubResponse = await axios.get(GITHUB_REST_URL, { timeout: 2000 });
       githubRunning = githubResponse.status === 200;
+      console.log(`GitHub REST API check result: ${githubResponse.status}`);
     } catch (e) {
+      console.log(`GitHub REST API check error: ${e.message}`);
       githubRunning = false;
     }
     
     try {
-      const coverageResponse = await axios.get(`${COVERAGE_MCP_URL}/capabilities`, { timeout: 2000 });
+      const coverageResponse = await axios.get(COVERAGE_REST_URL, { timeout: 2000 });
       coverageRunning = coverageResponse.status === 200;
+      console.log(`Coverage REST API check result: ${coverageResponse.status}`);
     } catch (e) {
+      console.log(`Coverage REST API check error: ${e.message}`);
       coverageRunning = false;
     }
     
@@ -80,8 +124,16 @@ async function startMcpServers() {
       return { success: true, alreadyRunning: true };
     }
     
-    // Start servers using the script
-    const scriptPath = path.join(PROJECT_ROOT, 'mcp-servers', 'start-mcp-servers.sh');
+    // Determine if we're in Docker
+    const isInDocker = fs.existsSync('/.dockerenv');
+    
+    // Start servers using the appropriate script
+    let scriptPath;
+    if (isInDocker) {
+      scriptPath = path.join('/app', 'mcp-servers', 'docker-mcp-adapters.sh');
+    } else {
+      scriptPath = path.join(PROJECT_ROOT, 'mcp-servers', 'start-mcp-adapters.sh');
+    }
     
     if (!fs.existsSync(scriptPath)) {
       console.error(`${colors.red}MCP server script not found: ${scriptPath}${colors.reset}`);
@@ -89,30 +141,26 @@ async function startMcpServers() {
     }
     
     // Create log directory if it doesn't exist
-    const logDir = path.join(PROJECT_ROOT, 'logs', 'mcp-debug');
+    const logDir = path.join(isInDocker ? '/app' : PROJECT_ROOT, 'logs', 'mcp-debug');
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
     
     const logPath = path.join(logDir, 'startup.log');
-    const logStream = fs.createWriteStream(logPath);
     
-    // Start the servers
-    const serverProcess = spawn(scriptPath, [], { 
-      stdio: ['ignore', logStream, logStream],
-      shell: true,
-      detached: true
-    });
+    // Execute the script directly
+    console.log(`${colors.yellow}Executing MCP server script: ${scriptPath}${colors.reset}`);
+    try {
+      execSync(`${scriptPath}`, { stdio: 'inherit' });
+      console.log(`${colors.green}MCP servers script executed successfully${colors.reset}`);
+    } catch (error) {
+      console.error(`${colors.red}Error executing MCP servers script: ${error.message}${colors.reset}`);
+      return { success: false, error: error.message };
+    }
     
-    // Don't wait for the process to exit
-    serverProcess.unref();
-    
-    console.log(`${colors.yellow}MCP servers starting in background${colors.reset}`);
-    console.log(`${colors.cyan}Check logs at: ${logPath}${colors.reset}`);
-    
-    // Wait for servers to start (up to 10 seconds)
+    // Wait for servers to start (up to 5 seconds)
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 5;
     
     while (attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -149,8 +197,16 @@ async function stopMcpServers() {
       return { success: true, notRunning: true };
     }
     
-    // Stop servers using the script
-    const scriptPath = path.join(PROJECT_ROOT, 'mcp-servers', 'start-mcp-servers.sh');
+    // Determine if we're in Docker
+    const isInDocker = fs.existsSync('/.dockerenv');
+    
+    // Stop servers using the appropriate script
+    let scriptPath;
+    if (isInDocker) {
+      scriptPath = path.join('/app', 'mcp-servers', 'docker-mcp-adapters.sh');
+    } else {
+      scriptPath = path.join(PROJECT_ROOT, 'mcp-servers', 'start-mcp-adapters.sh');
+    }
     
     if (!fs.existsSync(scriptPath)) {
       console.error(`${colors.red}MCP server script not found: ${scriptPath}${colors.reset}`);
@@ -158,10 +214,15 @@ async function stopMcpServers() {
     }
     
     // Execute the stop command
-    execSync(`${scriptPath} stop`, { stdio: 'inherit' });
-    
-    console.log(`${colors.green}MCP servers stopped successfully${colors.reset}`);
-    return { success: true };
+    console.log(`${colors.yellow}Executing MCP server stop command: ${scriptPath} stop${colors.reset}`);
+    try {
+      execSync(`${scriptPath} stop`, { stdio: 'inherit' });
+      console.log(`${colors.green}MCP servers stopped successfully${colors.reset}`);
+      return { success: true };
+    } catch (error) {
+      console.error(`${colors.red}Error stopping MCP servers: ${error.message}${colors.reset}`);
+      return { success: false, error: error.message };
+    }
   } catch (error) {
     console.error(`${colors.red}Error stopping MCP servers: ${error.message}${colors.reset}`);
     return { success: false, error: error.message };

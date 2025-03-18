@@ -1,5 +1,6 @@
 # PowerShell wrapper for start-mcp-servers.sh
 # This script runs the start-mcp-servers.sh script inside the Docker container
+# Now supports TypeScript versions of the server files as well
 
 # Display a banner
 Write-Host "`n`n" -ForegroundColor Cyan

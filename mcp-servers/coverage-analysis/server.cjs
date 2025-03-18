@@ -5,11 +5,14 @@
  * for analyzing test coverage and correlating it with implementation issues.
  */
 
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+// CommonJS module format
+"use strict";
+const dotenv = require('dotenv');
+dotenv.config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
+const path = require('path');
 const winston = require('winston');
 const istanbulLibCoverage = require('istanbul-lib-coverage');
 const istanbulLibReport = require('istanbul-lib-report');
@@ -131,46 +134,49 @@ async function diagnoseTokenIssue(token) {
 let octokit = null;
 let tokenDiagnosis = null;
 
-if (process.env.GITHUB_TOKEN) {
-  try {
-    const token = process.env.GITHUB_TOKEN;
-    
-    // Log token information (safely)
-    debugLogger.debug('Token information', {
-      tokenLength: token ? token.length : 0,
-      tokenPrefix: token ? token.substring(0, 4) : 'none',
-      tokenSet: !!token
-    });
-    
-    // Diagnose token issues
-    tokenDiagnosis = await diagnoseTokenIssue(token);
-    debugLogger.debug('Token diagnosis result', tokenDiagnosis);
-    
-    if (tokenDiagnosis.issue !== 'NONE') {
-      // Log detailed error information
-      logger.error(`GitHub token issue: ${tokenDiagnosis.description}`);
-      logger.error(`Resolution: ${tokenDiagnosis.resolution}`);
+// Using IIFE for top-level await in CommonJS
+(async function() {
+  if (process.env.GITHUB_TOKEN) {
+    try {
+      const token = process.env.GITHUB_TOKEN;
       
-      // Write to debug log
-      debugLogger.error('GitHub authentication failed', tokenDiagnosis);
+      // Log token information (safely)
+      debugLogger.debug('Token information', {
+        tokenLength: token ? token.length : 0,
+        tokenPrefix: token ? token.substring(0, 4) : 'none',
+        tokenSet: !!token
+      });
       
-      // Continue without mock data - will fail properly
-      octokit = new Octokit({ auth: token });
-    } else {
-      logger.info(`GitHub token validated successfully. Authenticated as ${tokenDiagnosis.username}`);
-      octokit = new Octokit({ auth: token });
+      // Diagnose token issues
+      tokenDiagnosis = await diagnoseTokenIssue(token);
+      debugLogger.debug('Token diagnosis result', tokenDiagnosis);
+      
+      if (tokenDiagnosis.issue !== 'NONE') {
+        // Log detailed error information
+        logger.error(`GitHub token issue: ${tokenDiagnosis.description}`);
+        logger.error(`Resolution: ${tokenDiagnosis.resolution}`);
+        
+        // Write to debug log
+        debugLogger.error('GitHub authentication failed', tokenDiagnosis);
+        
+        // Continue without mock data - will fail properly
+        octokit = new Octokit({ auth: token });
+      } else {
+        logger.info(`GitHub token validated successfully. Authenticated as ${tokenDiagnosis.username}`);
+        octokit = new Octokit({ auth: token });
+      }
+    } catch (error) {
+      logger.error(`Fatal error initializing GitHub client: ${error.message}`);
+      debugLogger.error('GitHub client initialization error', { 
+        error: error.message,
+        stack: error.stack
+      });
+      
+      // No fallback to mock data - just create a client that will fail appropriately
+      octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
     }
-  } catch (error) {
-    logger.error(`Fatal error initializing GitHub client: ${error.message}`);
-    debugLogger.error('GitHub client initialization error', { 
-      error: error.message,
-      stack: error.stack
-    });
-    
-    // No fallback to mock data - just create a client that will fail appropriately
-    octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
   }
-}
+})();
 
 // Default configuration
 const defaultConfig = {
@@ -1142,7 +1148,7 @@ function calculateGapScore(metrics, threshold) {
 }
 
 // Start the server
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 7868;
 app.listen(PORT, () => {
   logger.info(`Coverage Analysis MCP server running on port ${PORT}`);
 });

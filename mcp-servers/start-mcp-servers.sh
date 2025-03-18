@@ -3,8 +3,9 @@
 
 # Set variable for script directory
 SCRIPT_DIR="$(dirname "$0")"
-LOG_DIR="$SCRIPT_DIR/../logs/mcp-debug"
-ROOT_ENV_FILE="$SCRIPT_DIR/../.env"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+LOG_DIR="$PROJECT_ROOT/logs/mcp-debug"
+ROOT_ENV_FILE="$PROJECT_ROOT/.env"
 
 # Create log directory if it doesn't exist
 mkdir -p "$LOG_DIR"
@@ -258,6 +259,8 @@ setup_coverage_data() {
 start_github_mcp() {
   local pid_file="$SCRIPT_DIR/github-mcp-server.pid"
   local log_file="$LOG_DIR/github-mcp-output.log"
+  mkdir -p "$(dirname "$log_file")"
+  touch "$log_file"
   local github_port=${MCP_SERVER_PORT:-7867}
   
   if is_server_running "GitHub Issues MCP" "$pid_file" "node.*github-issues/server"; then
@@ -267,13 +270,14 @@ start_github_mcp() {
   
   log "INFO" "Starting GitHub Issues MCP server on port $github_port..."
   
-  # Create log directories if they don't exist
-  mkdir -p "$(dirname "$log_file")" 
-  mkdir -p "$LOG_DIR"
-  touch "$log_file"
+  # Log directory already created and log file already touched
   
-  # Use .cjs extension for CommonJS, .mjs for ESM
-  if [[ -f "$SCRIPT_DIR/github-issues/server.cjs" ]]; then
+  # Use TypeScript, .cjs extension for CommonJS, or .mjs for ESM
+  if [[ -f "$SCRIPT_DIR/github-issues/server.ts" ]]; then
+    log "INFO" "Using TypeScript server"
+    (cd "$SCRIPT_DIR/github-issues" && PORT=$github_port npx ts-node --transpileOnly server.ts > "$log_file" 2>&1) &
+    local pid=$!
+  elif [[ -f "$SCRIPT_DIR/github-issues/server.cjs" ]]; then
     log "INFO" "Using CommonJS with .cjs extension"
     (cd "$SCRIPT_DIR/github-issues" && PORT=$github_port node server.cjs > "$log_file" 2>&1) &
     local pid=$!
@@ -296,7 +300,11 @@ start_github_mcp() {
     log "SUCCESS" "GitHub Issues MCP server started with PID: $pid"
     
     # Check if server is responding
-    local status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$github_port/capabilities 2>/dev/null)
+    local host=${MCP_SERVER_HOST:-localhost}
+    if [[ "$host" == "0.0.0.0" ]]; then
+      host="localhost"
+    fi
+    local status=$(curl -s -o /dev/null -w "%{http_code}" http://$host:$github_port/capabilities 2>/dev/null)
     if [[ "$status" == "200" ]]; then
       log "SUCCESS" "GitHub Issues MCP server is responding correctly"
     else
@@ -321,7 +329,10 @@ start_github_mcp() {
 start_coverage_mcp() {
   local pid_file="$SCRIPT_DIR/coverage-mcp-server.pid"
   local log_file="$LOG_DIR/coverage-mcp-output.log"
-  local coverage_port=$((MCP_SERVER_PORT + 1))
+  mkdir -p "$(dirname "$log_file")"
+  touch "$log_file"
+  local coverage_port=${MCP_SERVER_PORT:-7867}
+  coverage_port=$((coverage_port + 1))
   
   if is_server_running "Coverage Analysis MCP" "$pid_file" "node.*coverage-analysis/server"; then
     log "INFO" "Coverage Analysis MCP is already running"
@@ -330,13 +341,14 @@ start_coverage_mcp() {
   
   log "INFO" "Starting Coverage Analysis MCP server on port $coverage_port..."
   
-  # Create log directories if they don't exist and ensure the log file exists
-  mkdir -p "$(dirname "$log_file")" 
-  mkdir -p "$LOG_DIR"
-  touch "$log_file"
+  # Log directory already created and log file already touched
   
-  # Use .cjs extension for CommonJS, .mjs for ESM
-  if [[ -f "$SCRIPT_DIR/coverage-analysis/server.cjs" ]]; then
+  # Use TypeScript, .cjs extension for CommonJS, or .mjs for ESM
+  if [[ -f "$SCRIPT_DIR/coverage-analysis/server.ts" ]]; then
+    log "INFO" "Using TypeScript server"
+    (cd "$SCRIPT_DIR/coverage-analysis" && PORT=$coverage_port npx ts-node --transpileOnly server.ts > "$log_file" 2>&1) &
+    local pid=$!
+  elif [[ -f "$SCRIPT_DIR/coverage-analysis/server.cjs" ]]; then
     log "INFO" "Using CommonJS with .cjs extension"
     (cd "$SCRIPT_DIR/coverage-analysis" && PORT=$coverage_port node server.cjs > "$log_file" 2>&1) &
     local pid=$!
@@ -359,7 +371,11 @@ start_coverage_mcp() {
     log "SUCCESS" "Coverage Analysis MCP server started with PID: $pid"
     
     # Check if server is responding
-    local status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$coverage_port/capabilities 2>/dev/null)
+    local host=${MCP_SERVER_HOST:-localhost}
+    if [[ "$host" == "0.0.0.0" ]]; then
+      host="localhost"
+    fi
+    local status=$(curl -s -o /dev/null -w "%{http_code}" http://$host:$coverage_port/capabilities 2>/dev/null)
     if [[ "$status" == "200" ]]; then
       log "SUCCESS" "Coverage Analysis MCP server is responding correctly"
     else
@@ -383,8 +399,10 @@ start_coverage_mcp() {
 # Configure Claude CLI
 configure_claude() {
   local claude_cmd="claude"
-  local github_url="http://localhost:3000"
-  local coverage_url="http://localhost:3001"
+  local github_port=${MCP_SERVER_PORT:-7867}
+  local coverage_port=$((github_port + 1))
+  local github_url="http://localhost:$github_port"
+  local coverage_url="http://localhost:$coverage_port"
   
   # Check if claude is installed
   if ! command -v $claude_cmd &> /dev/null; then
@@ -398,17 +416,20 @@ configure_claude() {
   log "INFO" "Configuring Claude Code MCP connections..."
   
   # Remove existing connections
-  $claude_cmd mcp remove github 2>/dev/null || true
-  $claude_cmd mcp remove coverage 2>/dev/null || true
+  $claude_cmd mcp remove github --scope user 2>/dev/null || true
+  $claude_cmd mcp remove coverage --scope user 2>/dev/null || true
   
-  # Add new connections
-  $claude_cmd mcp add github $github_url
+  # Get curl path for MCP connections
+  local curl_path=$(which curl)
+  
+  # Add new connections with absolute curl path
+  $claude_cmd mcp add github stdio "$curl_path -s $github_url" --scope user
   if [[ $? -ne 0 ]]; then
     log "ERROR" "Failed to configure GitHub MCP connection"
     return 1
   fi
   
-  $claude_cmd mcp add coverage $coverage_url
+  $claude_cmd mcp add coverage stdio "$curl_path -s $coverage_url" --scope user
   if [[ $? -ne 0 ]]; then
     log "ERROR" "Failed to configure Coverage MCP connection"
     return 1
@@ -452,14 +473,17 @@ main() {
   log "INFO" "=================================================="
   log "INFO" "MCP Servers Status Summary:"
   
+  local github_port=${MCP_SERVER_PORT:-7867}
+  local coverage_port=$((github_port + 1))
+  
   if [[ $github_status -eq 0 ]]; then
-    log "SUCCESS" "GitHub Issues MCP: Running (http://localhost:3000)"
+    log "SUCCESS" "GitHub Issues MCP: Running (http://localhost:$github_port)"
   else
     log "ERROR" "GitHub Issues MCP: Failed to start"
   fi
   
   if [[ $coverage_status -eq 0 ]]; then
-    log "SUCCESS" "Coverage Analysis MCP: Running (http://localhost:3001)"
+    log "SUCCESS" "Coverage Analysis MCP: Running (http://localhost:$coverage_port)"
   else
     log "ERROR" "Coverage Analysis MCP: Failed to start"
   fi

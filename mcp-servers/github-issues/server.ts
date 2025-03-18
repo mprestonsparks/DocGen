@@ -5,13 +5,103 @@
  * for interacting with GitHub Issues.
  */
 
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-const express = require('express');
-const bodyParser = require('body-parser');
-const { Octokit } = require('@octokit/rest');
-const winston = require('winston');
-const fs = require('fs');
+import * as path from 'path';
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig({ path: path.resolve(__dirname, '../../.env') });
+import express, { Request, Response } from 'express';
+import bodyParser from 'body-parser';
+import { Octokit } from '@octokit/rest';
+import * as winston from 'winston';
+import * as fs from 'fs';
+
+// Type definitions
+interface TokenDiagnosis {
+  issue: string;
+  description: string;
+  resolution?: string;
+  errorMessage?: string;
+  username?: string;
+}
+
+interface DefaultConfig {
+  owner: string;
+  repo: string;
+}
+
+interface GithubIssue {
+  number: number;
+  title: string;
+  state: string;
+  url: string;
+  created_at: string;
+  updated_at: string;
+  body: string | null;
+  labels: string[];
+  assignees: string[];
+}
+
+interface GithubComment {
+  id: number;
+  body: string;
+  url: string;
+}
+
+interface PullRequest {
+  number: number;
+  title: string;
+  state: string;
+  url: string;
+  created_at: string;
+  updated_at: string;
+  merged_at: string | null;
+  body: string | null;
+  user: {
+    login: string;
+    avatar_url: string;
+  };
+  head: string;
+  base: string;
+  draft: boolean;
+  mergeable: boolean | null;
+  mergeable_state?: string;
+  labels?: string[];
+  requested_reviewers?: string[];
+}
+
+interface FileChange {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+  patch?: string;
+}
+
+interface ModuleStatus {
+  issues: number;
+  openIssues: number;
+  closedIssues: number;
+}
+
+interface ImplementationStatus {
+  totalIssues: number;
+  openIssues: number;
+  closedIssues: number;
+  byModule: Record<string, ModuleStatus>;
+  coverageIssues: {
+    total: number;
+    open: number;
+    closed: number;
+  };
+  monitoringIssues: {
+    total: number;
+    open: number;
+    closed: number;
+  };
+  statusReport?: string;
+  existingTodos?: number;
+  missingTodos?: number;
+}
 
 // Configure logger
 const logger = winston.createLogger({
@@ -61,7 +151,7 @@ const debugLogger = winston.createLogger({
 });
 
 // Function to diagnose token issues
-async function diagnoseTokenIssue(token) {
+async function diagnoseTokenIssue(token: string | undefined): Promise<TokenDiagnosis> {
   debugLogger.debug('Diagnosing token issue', { 
     tokenLength: token ? token.length : 0,
     tokenPrefix: token ? token.substring(0, 4) : 'none',
@@ -97,7 +187,7 @@ async function diagnoseTokenIssue(token) {
       description: 'Token is valid',
       username: data.login
     };
-  } catch (error) {
+  } catch (error: any) {
     // Analyze error to determine cause
     if (error.status === 401) {
       return {
@@ -125,50 +215,52 @@ async function diagnoseTokenIssue(token) {
 }
 
 // Initialize GitHub client with thorough error handling
-let octokit;
-let tokenDiagnosis = null;
+let octokit: Octokit | null = null;
+let tokenDiagnosis: TokenDiagnosis | null = null;
 
-try {
-  const token = process.env.GITHUB_TOKEN;
-  
-  // Log token information (safely)
-  debugLogger.debug('Token information', {
-    tokenLength: token ? token.length : 0,
-    tokenPrefix: token ? token.substring(0, 4) : 'none',
-    tokenSet: !!token
-  });
-  
-  // Diagnose token issues
-  tokenDiagnosis = await diagnoseTokenIssue(token);
-  debugLogger.debug('Token diagnosis result', tokenDiagnosis);
-  
-  if (tokenDiagnosis.issue !== 'NONE') {
-    // Log detailed error information
-    logger.error(`GitHub token issue: ${tokenDiagnosis.description}`);
-    logger.error(`Resolution: ${tokenDiagnosis.resolution}`);
+(async () => {
+  try {
+    const token = process.env.GITHUB_TOKEN;
     
-    // Write to debug log
-    debugLogger.error('GitHub authentication failed', tokenDiagnosis);
+    // Log token information (safely)
+    debugLogger.debug('Token information', {
+      tokenLength: token ? token.length : 0,
+      tokenPrefix: token ? token.substring(0, 4) : 'none',
+      tokenSet: !!token
+    });
     
-    // Continue without mock data - will fail properly
-    octokit = new Octokit({ auth: token });
-  } else {
-    logger.info(`GitHub token validated successfully. Authenticated as ${tokenDiagnosis.username}`);
-    octokit = new Octokit({ auth: token });
+    // Diagnose token issues
+    tokenDiagnosis = await diagnoseTokenIssue(token);
+    debugLogger.debug('Token diagnosis result', tokenDiagnosis);
+    
+    if (tokenDiagnosis.issue !== 'NONE') {
+      // Log detailed error information
+      logger.error(`GitHub token issue: ${tokenDiagnosis.description}`);
+      logger.error(`Resolution: ${tokenDiagnosis.resolution}`);
+      
+      // Write to debug log
+      debugLogger.error('GitHub authentication failed', tokenDiagnosis);
+      
+      // Continue without mock data - will fail properly
+      octokit = new Octokit({ auth: token });
+    } else {
+      logger.info(`GitHub token validated successfully. Authenticated as ${tokenDiagnosis.username}`);
+      octokit = new Octokit({ auth: token });
+    }
+  } catch (error: any) {
+    logger.error(`Fatal error initializing GitHub client: ${error.message}`);
+    debugLogger.error('GitHub client initialization error', { 
+      error: error.message,
+      stack: error.stack
+    });
+    
+    // No fallback to mock data - just create a client that will fail appropriately
+    octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
   }
-} catch (error) {
-  logger.error(`Fatal error initializing GitHub client: ${error.message}`);
-  debugLogger.error('GitHub client initialization error', { 
-    error: error.message,
-    stack: error.stack
-  });
-  
-  // No fallback to mock data - just create a client that will fail appropriately
-  octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-}
+})();
 
 // Default configuration
-const defaultConfig = {
+const defaultConfig: DefaultConfig = {
   owner: process.env.GITHUB_OWNER || 'mprestonsparks',
   repo: process.env.GITHUB_REPO || 'DocGen'
 };
@@ -176,7 +268,7 @@ const defaultConfig = {
 /**
  * MCP Server Capabilities
  */
-app.get('/capabilities', (req, res) => {
+app.get('/capabilities', (req: Request, res: Response) => {
   res.json({
     name: 'GitHub Issues MCP',
     version: '0.1.0',
@@ -275,7 +367,7 @@ app.get('/capabilities', (req, res) => {
 /**
  * Get issues from a GitHub repository
  */
-app.post('/getIssues', async (req, res) => {
+app.post('/getIssues', async (req: Request, res: Response) => {
   try {
     const { state = 'open', labels, since, limit = 10 } = req.body;
     const config = { ...defaultConfig, ...req.body };
@@ -288,9 +380,13 @@ app.post('/getIssues', async (req, res) => {
       tokenStatus: tokenDiagnosis ? tokenDiagnosis.issue : 'UNKNOWN',
       endpoint: '/getIssues'
     });
+
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
     
     // Build request parameters
-    const params = {
+    const params: any = {
       owner: config.owner,
       repo: config.repo,
       state,
@@ -306,7 +402,7 @@ app.post('/getIssues', async (req, res) => {
     const { data } = await octokit.issues.listForRepo(params);
     
     // Format the response
-    const issues = data.map(issue => ({
+    const issues: GithubIssue[] = data.map((issue: any) => ({
       number: issue.number,
       title: issue.title,
       state: issue.state,
@@ -314,8 +410,8 @@ app.post('/getIssues', async (req, res) => {
       created_at: issue.created_at,
       updated_at: issue.updated_at,
       body: issue.body,
-      labels: issue.labels.map(label => label.name),
-      assignees: issue.assignees.map(assignee => assignee.login)
+      labels: issue.labels.map((label: any) => label.name),
+      assignees: issue.assignees.map((assignee: any) => assignee.login)
     }));
     
     // Log success
@@ -326,7 +422,7 @@ app.post('/getIssues', async (req, res) => {
     });
     
     res.json({ success: true, issues });
-  } catch (error) {
+  } catch (error: any) {
     // Enhanced error logging with detailed diagnostics
     const errorDetails = {
       endpoint: 'getIssues',
@@ -356,7 +452,7 @@ app.post('/getIssues', async (req, res) => {
 /**
  * Get a specific GitHub issue by number
  */
-app.post('/getIssue', async (req, res) => {
+app.post('/getIssue', async (req: Request, res: Response) => {
   try {
     const { issueNumber } = req.body;
     const config = { ...defaultConfig, ...req.body };
@@ -367,6 +463,10 @@ app.post('/getIssue', async (req, res) => {
     
     logger.info('Getting issue', { owner: config.owner, repo: config.repo, issueNumber });
     
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+
     const { data } = await octokit.issues.get({
       owner: config.owner,
       repo: config.repo,
@@ -374,7 +474,7 @@ app.post('/getIssue', async (req, res) => {
     });
     
     // Format the response
-    const issue = {
+    const issue: GithubIssue = {
       number: data.number,
       title: data.title,
       state: data.state,
@@ -382,12 +482,12 @@ app.post('/getIssue', async (req, res) => {
       created_at: data.created_at,
       updated_at: data.updated_at,
       body: data.body,
-      labels: data.labels.map(label => label.name),
-      assignees: data.assignees.map(assignee => assignee.login)
+      labels: data.labels.map((label: any) => label.name),
+      assignees: data.assignees.map((assignee: any) => assignee.login)
     };
     
     res.json({ success: true, issue });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error getting issue', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
@@ -396,7 +496,7 @@ app.post('/getIssue', async (req, res) => {
 /**
  * Create a new GitHub issue
  */
-app.post('/createIssue', async (req, res) => {
+app.post('/createIssue', async (req: Request, res: Response) => {
   try {
     const { title, body, labels, assignees } = req.body;
     const config = { ...defaultConfig, ...req.body };
@@ -407,7 +507,11 @@ app.post('/createIssue', async (req, res) => {
     
     logger.info('Creating issue', { owner: config.owner, repo: config.repo, title });
     
-    const params = {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+
+    const params: any = {
       owner: config.owner,
       repo: config.repo,
       title,
@@ -427,7 +531,7 @@ app.post('/createIssue', async (req, res) => {
         url: data.html_url
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error creating issue', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
@@ -436,7 +540,7 @@ app.post('/createIssue', async (req, res) => {
 /**
  * Update an existing GitHub issue
  */
-app.post('/updateIssue', async (req, res) => {
+app.post('/updateIssue', async (req: Request, res: Response) => {
   try {
     const { issueNumber, title, body, state, labels, assignees } = req.body;
     const config = { ...defaultConfig, ...req.body };
@@ -447,7 +551,11 @@ app.post('/updateIssue', async (req, res) => {
     
     logger.info('Updating issue', { owner: config.owner, repo: config.repo, issueNumber });
     
-    const params = {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+
+    const params: any = {
       owner: config.owner,
       repo: config.repo,
       issue_number: issueNumber
@@ -470,7 +578,7 @@ app.post('/updateIssue', async (req, res) => {
         url: data.html_url
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error updating issue', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
@@ -479,7 +587,7 @@ app.post('/updateIssue', async (req, res) => {
 /**
  * Add a comment to a GitHub issue
  */
-app.post('/addComment', async (req, res) => {
+app.post('/addComment', async (req: Request, res: Response) => {
   try {
     const { issueNumber, body } = req.body;
     const config = { ...defaultConfig, ...req.body };
@@ -494,6 +602,10 @@ app.post('/addComment', async (req, res) => {
     
     logger.info('Adding comment', { owner: config.owner, repo: config.repo, issueNumber });
     
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+
     const { data } = await octokit.issues.createComment({
       owner: config.owner,
       repo: config.repo,
@@ -509,7 +621,7 @@ app.post('/addComment', async (req, res) => {
         url: data.html_url
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error adding comment', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
@@ -518,7 +630,7 @@ app.post('/addComment', async (req, res) => {
 /**
  * Get implementation status information
  */
-app.post('/getImplementationStatus', async (req, res) => {
+app.post('/getImplementationStatus', async (req: Request, res: Response) => {
   try {
     const config = { ...defaultConfig, ...req.body };
     
@@ -531,6 +643,10 @@ app.post('/getImplementationStatus', async (req, res) => {
       endpoint: '/getImplementationStatus'
     });
     
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+
     // Get implementation-gap labeled issues
     const { data: issues } = await octokit.issues.listForRepo({
       owner: config.owner,
@@ -553,7 +669,7 @@ app.post('/getImplementationStatus', async (req, res) => {
     });
     
     // Process issues to extract implementation status
-    const implementationStatus = {
+    const implementationStatus: ImplementationStatus = {
       totalIssues: issues.length,
       openIssues: issues.filter(issue => issue.state === 'open').length,
       closedIssues: issues.filter(issue => issue.state === 'closed').length,
@@ -575,6 +691,8 @@ app.post('/getImplementationStatus', async (req, res) => {
     
     // Extract module information from issue bodies
     issues.forEach(issue => {
+      if (!issue.body) return;
+      
       const moduleMatch = issue.body.match(/module: "([^"]+)"/);
       if (moduleMatch) {
         const module = moduleMatch[1];
@@ -618,7 +736,7 @@ app.post('/getImplementationStatus', async (req, res) => {
           implementationStatus.missingTodos = parseInt(missingTodoMatch[1]);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       logger.warn('Error reading implementation status report', { error: err.message });
       debugLogger.error('Implementation report read error', {
         error: err.message,
@@ -635,7 +753,7 @@ app.post('/getImplementationStatus', async (req, res) => {
     });
     
     res.json({ success: true, implementationStatus });
-  } catch (error) {
+  } catch (error: any) {
     // Enhanced error logging with detailed diagnostics
     const errorDetails = {
       endpoint: 'getImplementationStatus',
@@ -665,14 +783,18 @@ app.post('/getImplementationStatus', async (req, res) => {
 /**
  * Get pull requests from a GitHub repository
  */
-app.post('/getPullRequests', async (req, res) => {
+app.post('/getPullRequests', async (req: Request, res: Response) => {
   try {
     const { state = 'open', sort = 'updated', limit = 10 } = req.body;
     const config = { ...defaultConfig, ...req.body };
     
     logger.info('Getting pull requests', { owner: config.owner, repo: config.repo, state, sort });
     
-    const params = {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+
+    const params: any = {
       owner: config.owner,
       repo: config.repo,
       state,
@@ -684,7 +806,7 @@ app.post('/getPullRequests', async (req, res) => {
     const { data } = await octokit.pulls.list(params);
     
     // Format the response
-    const pullRequests = data.map(pr => ({
+    const pullRequests: PullRequest[] = data.map((pr: any) => ({
       number: pr.number,
       title: pr.title,
       state: pr.state,
@@ -704,7 +826,7 @@ app.post('/getPullRequests', async (req, res) => {
     }));
     
     res.json({ success: true, pullRequests });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error getting pull requests', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
@@ -713,7 +835,7 @@ app.post('/getPullRequests', async (req, res) => {
 /**
  * Get a specific GitHub pull request by number
  */
-app.post('/getPullRequest', async (req, res) => {
+app.post('/getPullRequest', async (req: Request, res: Response) => {
   try {
     const { prNumber } = req.body;
     const config = { ...defaultConfig, ...req.body };
@@ -724,6 +846,10 @@ app.post('/getPullRequest', async (req, res) => {
     
     logger.info('Getting pull request', { owner: config.owner, repo: config.repo, prNumber });
     
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+
     const { data } = await octokit.pulls.get({
       owner: config.owner,
       repo: config.repo,
@@ -731,7 +857,7 @@ app.post('/getPullRequest', async (req, res) => {
     });
     
     // Format the response
-    const pullRequest = {
+    const pullRequest: PullRequest = {
       number: data.number,
       title: data.title,
       state: data.state,
@@ -749,12 +875,12 @@ app.post('/getPullRequest', async (req, res) => {
       draft: data.draft,
       mergeable: data.mergeable,
       mergeable_state: data.mergeable_state,
-      labels: data.labels.map(label => label.name),
-      requested_reviewers: data.requested_reviewers.map(reviewer => reviewer.login)
+      labels: data.labels.map((label: any) => label.name),
+      requested_reviewers: data.requested_reviewers.map((reviewer: any) => reviewer.login)
     };
     
     res.json({ success: true, pullRequest });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error getting pull request', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
@@ -763,7 +889,7 @@ app.post('/getPullRequest', async (req, res) => {
 /**
  * Create a new GitHub pull request
  */
-app.post('/createPullRequest', async (req, res) => {
+app.post('/createPullRequest', async (req: Request, res: Response) => {
   try {
     const { title, body, head, base = 'main', draft = false } = req.body;
     const config = { ...defaultConfig, ...req.body };
@@ -778,6 +904,10 @@ app.post('/createPullRequest', async (req, res) => {
     
     logger.info('Creating pull request', { owner: config.owner, repo: config.repo, title, head, base });
     
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+
     const params = {
       owner: config.owner,
       repo: config.repo,
@@ -799,7 +929,7 @@ app.post('/createPullRequest', async (req, res) => {
         state: data.state
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error creating pull request', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
@@ -808,7 +938,7 @@ app.post('/createPullRequest', async (req, res) => {
 /**
  * Get files changed in a pull request
  */
-app.post('/getFilesChanged', async (req, res) => {
+app.post('/getFilesChanged', async (req: Request, res: Response) => {
   try {
     const { prNumber } = req.body;
     const config = { ...defaultConfig, ...req.body };
@@ -819,6 +949,10 @@ app.post('/getFilesChanged', async (req, res) => {
     
     logger.info('Getting files changed', { owner: config.owner, repo: config.repo, prNumber });
     
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+
     const { data } = await octokit.pulls.listFiles({
       owner: config.owner,
       repo: config.repo,
@@ -826,7 +960,7 @@ app.post('/getFilesChanged', async (req, res) => {
     });
     
     // Format the response
-    const files = data.map(file => ({
+    const files: FileChange[] = data.map((file: any) => ({
       filename: file.filename,
       status: file.status, // added, modified, removed
       additions: file.additions,
@@ -836,17 +970,18 @@ app.post('/getFilesChanged', async (req, res) => {
     }));
     
     res.json({ success: true, files });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error getting files changed', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // Start the server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  logger.info(`GitHub Issues MCP server running on port ${PORT}`);
+const PORT = process.env.MCP_SERVER_PORT || process.env.PORT || 3000;
+const HOST = process.env.MCP_SERVER_HOST || 'localhost';
+const server = app.listen(PORT, HOST, () => {
+  logger.info(`GitHub Issues MCP server running on ${HOST}:${PORT}`);
 });
 
 // Export for testing
-module.exports = app;
+export default app;

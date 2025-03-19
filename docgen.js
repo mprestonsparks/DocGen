@@ -44,6 +44,20 @@ if (fs.existsSync(envPath)) {
 // Check if Claude features are enabled
 const enableClaudeFeatures = process.env.ENABLE_CLAUDE_FEATURES === 'true';
 
+// Initialize AI provider (for Windows integration with Windsurf)
+let aiProvider = null;
+// Only attempt to initialize on Windows platforms
+if (process.platform === 'win32') {
+  try {
+    const createAIProvider = require('./src/ai-provider/factory');
+    aiProvider = createAIProvider();
+    // Don't await here - we'll initialize lazily when needed
+  } catch (error) {
+    console.log(`${colors.yellow}Warning: AI provider initialization failed. Windsurf integration may not be available.${colors.reset}`);
+    console.log(`${colors.yellow}Error: ${error.message}${colors.reset}`);
+  }
+}
+
 // Setup command line interface
 program
   .name('docgen')
@@ -243,6 +257,28 @@ program
     }
   });
 
+// Add a command to configure Windsurf (Windows only)
+program
+  .command('configure-windsurf')
+  .description('Configure Windsurf IDE integration (Windows only)')
+  .action(async () => {
+    // Only allow this on Windows
+    if (process.platform !== 'win32') {
+      console.log(`${colors.yellow}This command is only available on Windows.${colors.reset}`);
+      console.log(`Windsurf integration is not needed on ${process.platform}`);
+      return;
+    }
+    
+    try {
+      // Dynamic import to prevent errors on non-Windows platforms
+      const configureWindsurf = require('./src/ai-provider/configure-windsurf');
+      await configureWindsurf();
+    } catch (error) {
+      console.error(`${colors.red}Error configuring Windsurf: ${error.message}${colors.reset}`);
+      process.exit(1);
+    }
+  });
+
 // Help command
 program
   .command('help')
@@ -258,6 +294,21 @@ program.parse(process.argv);
 if (!process.argv.slice(2).length) {
   console.log(`${colors.magenta}=== DocGen Command Interface ====${colors.reset}`);
   console.log(`${colors.cyan}Claude features: ${enableClaudeFeatures ? colors.green + 'Enabled' : colors.yellow + 'Disabled'}${colors.reset}`);
+  
+  // Show Windsurf integration status on Windows
+  if (process.platform === 'win32' && aiProvider) {
+    aiProvider.isAvailable().then(available => {
+      if (available) {
+        console.log(`${colors.cyan}Windsurf integration: ${colors.green}Available${colors.reset}`);
+      } else {
+        console.log(`${colors.cyan}Windsurf integration: ${colors.yellow}Not detected${colors.reset}`);
+        console.log(`Run '${colors.cyan}node docgen.js configure-windsurf${colors.reset}' to set up Windsurf integration`);
+      }
+    }).catch(() => {
+      console.log(`${colors.cyan}Windsurf integration: ${colors.red}Error checking status${colors.reset}`);
+    });
+  }
+  
   console.log('');
   program.outputHelp();
 }

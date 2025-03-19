@@ -129,6 +129,24 @@ Copy-Item .env.example .env
 .\get-to-work.ps1
 ```
 
+#### Windows Integration with Windsurf IDE
+
+DocGen provides integration with Windsurf IDE for Windows users:
+
+1. First, install [Windsurf IDE](https://www.codeium.com/windsurf) if you haven't already
+2. Run the Windsurf configuration command to set up MCP integration:
+
+```powershell
+# Configure Windsurf integration
+node docgen.js configure-windsurf
+```
+
+This will allow you to use DocGen's AI capabilities through Windsurf's Cascade AI interface. Once configured:
+
+1. Open Windsurf IDE
+2. Access the Cascade panel (Ctrl+L)
+3. Use DocGen tools through the Cascade AI interface
+
 ## Usage Guide
 
 ### Docker-Based Usage (Recommended)
@@ -165,7 +183,12 @@ For users who prefer to run DocGen natively:
 .\get-to-work.ps1 check-servers
 .\get-to-work.ps1 start-servers
 .\get-to-work.ps1 check-tests
+
+# Configure Windsurf IDE integration
+node docgen.js configure-windsurf
 ```
+
+> **Windows AI Integration**: For Windows users, DocGen integrates with Windsurf IDE to provide AI capabilities similar to those available via Claude Code on macOS. After configuring Windsurf integration, you can use all DocGen tools through Windsurf's Cascade AI interface.
 
 #### macOS/Linux:
 

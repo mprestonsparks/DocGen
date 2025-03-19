@@ -1,8 +1,12 @@
-# DocGen - AI-Powered Documentation Template System 
+# DocGen
 
+### AI-Powered Documentation Template System 
 
-<p align="left">
-  
+DocGen is a documentation generation system designed to streamline the creation of high-quality software project documentation. Leveraging AI-powered interviews and structured templates, it guides developers through the documentation process while ensuring consistency, completeness, and cross-referencing integrity.
+
+---
+<br>
+<p align="left">  
   <!-- CI/Workflow Status - Only the important ones -->
   <a href="https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml"><img src="https://github.com/mprestonsparks/DocGen/actions/workflows/docs-ci.yml/badge.svg?branch=main" alt="Documentation CI"></a>
   <a href="https://github.com/mprestonsparks/DocGen/actions/workflows/validate-docs.yml"><img src="https://github.com/mprestonsparks/DocGen/actions/workflows/validate-docs.yml/badge.svg?branch=main" alt="Validation"></a>
@@ -12,17 +16,14 @@
   <a href="https://github.com/mprestonsparks/DocGen/blob/main/tests/README.md"><img src="https://img.shields.io/badge/Tests-308_passed-success" alt="308 Tests"></a>
 </p>
 
-DocGen is a documentation generation system designed to streamline the creation of high-quality software project documentation. Leveraging AI-powered interviews and structured templates, it guides developers through the documentation process while ensuring consistency, completeness, and cross-referencing integrity.
+---
 
+<br>
 <p align="left">
   <img src="https://img.shields.io/badge/npm-%3E%3D7.0.0-brightgreen" alt="npm ≥7.0.0">
   <img src="https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen" alt="Node ≥18.0.0">
   <img src="https://img.shields.io/badge/TypeScript-Ready-3178C6?logo=typescript&logoColor=white" alt="TypeScript Ready">
   <img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white" alt="Docker Ready">
-</p>
-
-<p align="left">
-<a href="https://github.com/mprestonsparks/DocGen/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
 </p>
 
 ## Features
@@ -32,11 +33,34 @@ DocGen is a documentation generation system designed to streamline the creation 
 - **🔍 Existing Project Support**: Non-destructive analysis of existing projects to generate complementary documentation
 - **🍎 Swift Integration**: First-class support for Swift/iOS projects with specialized templates
 - **🌐 Multi-language Support**: Planned support for many programming languages and frameworks
-- **✅ Validation System**: Ensures document completeness and cross-references for technical accuracy
+- **✅ Validation System**: Ensures document completeness and cross-references
+- **🐳 Cross-Platform Support**: Docker-based workflow for consistent experience across Windows, macOS, and Linux
 - **🔄 Version Management**: Synchronizes document versions across your project documentation
-- **🐳 Docker Support**: Containerized development environment for consistent setup and collaboration
-- **🧪 Comprehensive Testing**: 308 tests with 59% overall coverage and 95% utility module coverage
 - **📊 Implementation Monitoring**: Tracks implementation completeness with TODO analysis and reporting
+- **🧪 Comprehensive Testing**: 308 tests with 59% overall coverage and 95% utility module coverage
+
+## Project Structure
+
+DocGen is organized with a clean directory structure for better maintainability:
+
+```
+DocGen/
+├── docs/                      # Documentation files
+│   └── development/           # Developer-specific documentation
+├── scripts/                   # Cross-platform scripts
+│   ├── unix/                  # Unix-specific scripts (.sh)
+│   └── windows/               # Windows-specific scripts (.ps1)
+├── tests/                     # Test files and configurations
+│   ├── reports/               # Test reports and summaries
+│   └── utils/                 # Test utility scripts
+├── .docker/                   # Docker configuration files
+├── docgen.js                  # Main entry point
+├── docgen.ps1                 # Windows wrapper (redirects to scripts/windows/)
+├── docgen.sh                  # Unix wrapper (redirects to scripts/unix/)
+├── get-to-work.ps1            # Windows workflow wrapper
+├── get-to-work.sh             # Unix workflow wrapper
+└── README.md                  # This file
+```
 
 ## Getting Started
 
@@ -51,25 +75,25 @@ DocGen is a documentation generation system designed to streamline the creation 
 
 ### Installation
 
-#### Option 1: Use as a Template Repository (Recommended)
+#### Option 1: Docker-Based Installation (Recommended for All Platforms)
+
+The recommended way to use DocGen is with Docker, which provides a consistent environment across all platforms:
 
 ```bash
-# Create a new repository from the template
-gh repo create my-project-docs --template mprestonsparks/DocGen
+# Clone the repository
+git clone https://github.com/mprestonsparks/DocGen.git
+cd DocGen
 
-# Clone your new repository
-git clone https://github.com/mprestonsparks/my-project-docs.git
-cd my-project-docs
+# Start the Docker environment
+npm run docker:start
 
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Run the workflow manager inside Docker
+npm run docker:exec node docgen.js init
 ```
 
-#### Option 2: Clone the Repository
+This approach works on Windows, macOS, and Linux, and ensures all dependencies are properly installed.
+
+#### Option 2: Native Installation (macOS/Linux)
 
 ```bash
 # Clone the repository
@@ -81,85 +105,198 @@ npm install
 
 # Set up environment variables
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Edit .env and add your ANTHROPIC_API_KEY and other required variables
+
+# Run the workflow manager
+./docgen.js init
 ```
+
+#### Option 3: Native Installation (Windows)
+
+```powershell
+# Clone the repository
+git clone https://github.com/mprestonsparks/DocGen.git
+cd DocGen
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+Copy-Item .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY and other required variables
+
+# Run the workflow manager
+.\get-to-work.ps1
+```
+
+#### Windows Integration with Windsurf IDE
+
+DocGen provides integration with Windsurf IDE for Windows users:
+
+1. First, install [Windsurf IDE](https://www.codeium.com/windsurf) if you haven't already
+2. Run the Windsurf configuration command to set up MCP integration:
+
+```powershell
+# Configure Windsurf integration
+node docgen.js configure-windsurf
+```
+
+This will allow you to use DocGen's AI capabilities through Windsurf's Cascade AI interface. Once configured:
+
+1. Open Windsurf IDE
+2. Access the Cascade panel (Ctrl+L)
+3. Use DocGen tools through the Cascade AI interface
 
 ## Usage Guide
 
-### Creating Documentation
+### Docker-Based Usage (Recommended)
 
-DocGen uses an interactive interview process to gather project information:
-
-1. Start the interview:
-   ```bash
-   npm run interview
-   ```
-
-2. Answer the questions about your project, technology stack, and documentation needs.
-
-3. The system will generate initial documentation templates in the `docs/generated/` directory.
-
-4. Review and customize the generated documents according to your specific needs.
-
-### Existing Project Support {#existing-project-support}
-
-DocGen can analyze existing projects to generate documentation that complements your codebase:
-
-1. Start the interview with an existing project:
-   ```bash
-   npm run interview -- --existing-project ./path/to/your/project
-   ```
-
-2. DocGen will analyze your project structure, detect languages, frameworks, and existing documentation.
-
-3. Answer the interview questions with pre-filled smart defaults based on the analysis.
-
-4. The system will generate documentation in an isolated directory, ensuring no existing files are modified.
-
-5. An integration guide will be provided to help combine DocGen output with your existing documentation.
-
-Features:
-- Non-destructive analysis and generation
-- Technology and framework detection
-- Smart defaults based on project analysis
-- Isolated output to avoid conflicts
-- Integration guidance for combining documentation
-
-For detailed usage instructions, see the [Existing Project Documentation](docs/existing-project/README.md).
-
-### Key Commands
+The recommended way to use DocGen is with Docker, which provides a consistent environment across all platforms:
 
 ```bash
-# Start interview (JavaScript implementation)
-npm run interview
+# Clone the repository
+git clone https://github.com/mprestonsparks/DocGen.git
+cd DocGen
 
-# Start interview (TypeScript implementation - more features)
-npm run interview:ts
+# Start the Docker environment
+npm run docker:start
 
-# Start interview for existing project
-npm run interview -- --existing-project ./path/to/project
+# Run the workflow manager inside Docker
+npm run docker:exec node docgen.js init
 
-# Validate documentation
-npm run validate
-
-# Run implementation monitoring
-npm run monitor
-
-# Validate TODOs with semantic analysis
-npm run validate-todos:enhanced
-
-# Generate documentation reports
-npm run generate-reports
-
-# Update document versions (patch, minor, major)
-npm run update-versions patch
-
-# Run tests
-npm test
-
-# Run linting
-npm run lint
+# Run other commands
+npm run docker:exec node docgen.js check-servers
+npm run docker:exec node docgen.js start-servers
 ```
+
+### Native Usage
+
+For users who prefer to run DocGen natively:
+
+#### Windows:
+
+```powershell
+# Start the DocGen workflow manager
+.\get-to-work.ps1
+
+# Run specific commands
+.\get-to-work.ps1 check-servers
+.\get-to-work.ps1 start-servers
+.\get-to-work.ps1 check-tests
+
+# Configure Windsurf IDE integration
+node docgen.js configure-windsurf
+```
+
+> **Windows AI Integration**: For Windows users, DocGen integrates with Windsurf IDE to provide AI capabilities similar to those available via Claude Code on macOS. After configuring Windsurf integration, you can use all DocGen tools through Windsurf's Cascade AI interface.
+
+#### macOS/Linux:
+
+```bash
+# Start the DocGen workflow manager
+./docgen.js init
+
+# Run specific commands
+./docgen.js check-servers
+./docgen.js start-servers
+./docgen.js check-tests
+```
+
+### NPM Scripts (All Platforms)
+
+You can also use these npm scripts which work across all platforms:
+
+```bash
+# Initialize the development workflow
+npm run docgen:init
+
+# Check if MCP servers are running
+npm run docgen:check-servers
+
+# Start MCP servers
+npm run docgen:start-servers
+```
+
+## Cross-Platform Development
+
+DocGen is designed to work seamlessly across Windows, macOS, and Linux. Here's how it handles cross-platform compatibility:
+
+### Docker-First Approach
+
+The recommended way to use DocGen is through Docker, which provides a consistent environment across all platforms. This approach:
+
+- Eliminates environment inconsistencies between platforms
+- Ensures all dependencies are properly installed
+- Simplifies setup for new users
+- Provides consistent behavior across all platforms
+
+### Platform-Specific Scripts
+
+For users who prefer to run DocGen natively:
+
+- **macOS/Linux**: Uses bash scripts (`.sh`) for native execution
+- **Windows**: Uses PowerShell scripts (`.ps1`) for native execution
+- **Cross-Platform**: The npm scripts automatically detect your platform and run the appropriate script
+
+### Modular Architecture
+
+DocGen now uses a modular architecture that separates core functionality from platform-specific features:
+
+- **Core Modules**: Available to all developers regardless of platform
+- **Claude-Specific Modules**: Optional modules that integrate with Claude Code
+- **Platform-Specific Wrappers**: Ensure consistent experience across all platforms
+
+### Unified Command Interface
+
+The new `docgen.js` command interface provides a consistent way to interact with DocGen across all platforms:
+
+```bash
+# Initialize the development workflow
+npm run docgen:init
+
+# Check if MCP servers are running
+npm run docgen:check-servers
+
+# Start MCP servers
+npm run docgen:start-servers
+
+# Check test status
+npm run docgen:check-tests
+
+# Analyze project state
+npm run docgen:analyze
+
+# Toggle Claude features on/off
+npm run docgen:toggle-claude
+```
+
+### Claude Code Integration (Optional)
+
+DocGen can optionally integrate with Claude Code for enhanced AI capabilities:
+
+```bash
+# Enable Claude features
+npm run docgen:toggle-claude
+
+# Analyze project structure with Claude
+npm run docgen:claude-analyze
+
+# Generate documentation with Claude
+npm run docgen:claude-docs
+
+# Suggest test improvements with Claude
+npm run docgen:claude-tests
+```
+
+### Multi-Language Support
+
+DocGen is designed to work with multiple programming languages:
+
+- **TypeScript/JavaScript**: Primary language for DocGen itself
+- **Python**: Support for Python projects
+- **Additional Languages**: Architecture designed for easy addition of more languages
+
+For more details on the cross-platform strategy, see [docs/CROSS_PLATFORM_STRATEGY.md](docs/CROSS_PLATFORM_STRATEGY.md).
 
 ## Implementation Monitoring
 
@@ -190,16 +327,27 @@ For consistent development environments and easier team collaboration, DocGen pr
 npm run docker:build
 
 # Start the container
-npm run docker:up
+npm run docker:start
 
-# Enter the container shell
-npm run docker:shell
+# Execute commands in the container
+npm run docker:exec -- npm test
+
+# Check the container status
+npm run docker:status
 
 # Stop the container
-npm run docker:down
+npm run docker:stop
 ```
 
-These npm commands use Docker Compose to manage the containers. See the [Docker setup instructions](.docker/README.md) for more details.
+These npm commands use the enhanced cross-platform Docker utilities to manage containers. The Docker environment provides:
+
+1. **Full Cross-Platform Support**: Works on Windows, macOS, and Linux
+2. **MCP Server Integration**: DocGen's MCP servers run in Docker for consistent behavior
+3. **TypeScript and Python Support**: Multi-language development environment
+4. **Volume Mounting**: Edit code on your host machine, run it in the container
+5. **Environment Variables**: Automatic passing of environment variables between host and container
+
+For more details, see the [Cross-Platform Usage Guide](docs/CROSS_PLATFORM_USAGE.md) and [Cross-Platform Strategy](docs/CROSS_PLATFORM_STRATEGY.md).
 
 ## Template Structure
 

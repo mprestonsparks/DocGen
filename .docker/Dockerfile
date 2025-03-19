@@ -1,32 +1,31 @@
-FROM node:20-slim
+FROM node:18-slim
 
 WORKDIR /app
 
-# Install system dependencies for paper_architect
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
+    git \
+    bash \
     curl \
-    python3 \
-    python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies for paper_architect
-RUN pip3 install --no-cache-dir \
-    networkx \
-    matplotlib \
-    requests
-
-# Install Node.js dependencies
+# Copy package.json and package-lock.json
 COPY package*.json ./
-RUN npm install
 
-# Copy project files
+# Install dependencies
+RUN npm ci
+
+# Copy the rest of the codebase
 COPY . .
 
 # Build TypeScript
 RUN npm run build
 
-# Expose port (if needed)
-# EXPOSE 3000
+# Set environment variables
+ENV NODE_ENV=development
 
-# Set default command
-CMD ["npm", "run", "interview"]
+# Create indicator file for Docker environment
+RUN touch .mcp-in-docker
+
+# Command to keep container running
+CMD ["tail", "-f", "/dev/null"]

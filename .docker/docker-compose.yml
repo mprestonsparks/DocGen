@@ -5,35 +5,15 @@ services:
     build:
       context: ..
       dockerfile: .docker/Dockerfile
+    container_name: docker-docgen-1
     volumes:
       - ..:/app
-      - node_modules:/app/node_modules
+      - /app/node_modules  # Prevent host node_modules from being mounted
+    ports:
+      - "3000:3000"  # For web server if needed
+      - "4000:4000"  # For API if needed
+      - "7321:7321"  # For GitHub MCP server
+      - "7322:7322"  # For Coverage MCP server
     environment:
       - NODE_ENV=development
-      # Add other environment variables as needed
-      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    depends_on:
-      - grobid
-    # Uncomment if you need to expose a port
-    # ports:
-    #   - "3000:3000"
-    tty: true
-    stdin_open: true
-
-  # GROBID service for paper_architect module
-  grobid:
-    image: grobid/grobid:0.7.2
-    ports:
-      - "8070:8070"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8070/api/version"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    volumes:
-      - grobid_data:/opt/grobid/grobid-home/tmp
-
-volumes:
-  node_modules:
-  grobid_data:
+    command: tail -f /dev/null  # Keep container running

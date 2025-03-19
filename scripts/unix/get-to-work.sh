@@ -1,162 +1,194 @@
 #!/bin/bash
-#
-# DocGen Workflow Manager for Unix-based systems
-# This script provides a Unix-compatible entry point for the DocGen workflow
-#
-# This script aligns with the Docker-first strategy for cross-platform compatibility.
 
-# Get the script directory and project root
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+# Get-to-work script for Unix platforms
+# This script is the entry point for developers working on DocGen on Unix platforms
 
-# Display header
-echo ""
-echo "=============================================="
-echo "           DocGen Workflow Manager"
-echo "=============================================="
+# Set colors for output
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
 
-# Check if Claude features are enabled
-if [ -f "$PROJECT_ROOT/.claude-enabled" ]; then
-    echo "Claude features: Enabled"
-else
-    echo "Claude features: Disabled"
-fi
-echo ""
+# Get the project root directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
 
-# Check if Docker is installed
-if command -v docker &> /dev/null; then
-    DOCKER_VERSION=$(docker --version)
-    echo "Docker detected: $DOCKER_VERSION"
-else
-    echo "Docker not detected. Please install Docker."
+# Function to check if a command exists
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+# Check for required tools
+check_requirements() {
+  echo -e "${BLUE}Checking requirements...${NC}"
+  
+  # Check for Node.js
+  if ! command_exists node; then
+    echo -e "${RED}Error: Node.js is not installed.${NC}"
+    echo -e "Please install Node.js from https://nodejs.org/"
     exit 1
-fi
-
-# Check if Node.js is installed
-if command -v node &> /dev/null; then
-    NODE_VERSION=$(node --version)
-    echo "Using Node.js $NODE_VERSION"
-else
-    echo "Node.js not detected. Please install Node.js."
+  fi
+  
+  # Check Node.js version
+  NODE_VERSION=$(node -v | cut -d'v' -f2)
+  NODE_MAJOR=$(echo $NODE_VERSION | cut -d'.' -f1)
+  
+  if [ "$NODE_MAJOR" -lt 18 ]; then
+    echo -e "${YELLOW}Warning: Node.js version $NODE_VERSION is below the recommended version (18+).${NC}"
+    echo -e "Some features may not work correctly. Consider upgrading Node.js."
+  else
+    echo -e "${GREEN}Node.js version $NODE_VERSION detected.${NC}"
+  fi
+  
+  # Check for npm
+  if ! command_exists npm; then
+    echo -e "${RED}Error: npm is not installed.${NC}"
+    echo -e "npm should be installed with Node.js. Please check your installation."
     exit 1
-fi
+  fi
+  
+  # Check for Docker if needed for cross-platform work
+  if command_exists docker; then
+    echo -e "${GREEN}Docker is available for cross-platform testing.${NC}"
+  else
+    echo -e "${YELLOW}Warning: Docker is not installed.${NC}"
+    echo -e "Docker is recommended for cross-platform development and testing."
+  fi
+  
+  echo -e "${GREEN}All critical requirements satisfied.${NC}"
+}
 
-# Compile TypeScript to JavaScript if needed
-if [ -f "$PROJECT_ROOT/docgen.ts" ] && [ ! -f "$PROJECT_ROOT/docgen.js" ]; then
-    echo "Compiling TypeScript to JavaScript..."
-    cd "$PROJECT_ROOT" && npx tsc
-fi
-
-# Process command-line arguments
-COMMAND=$1
-USE_DOCKER=true  # Default to using Docker
-
-# Check if Docker container is running
-CONTAINER_RUNNING=$(docker ps --filter "name=docker-docgen" --format "{{.Names}}")
-if [ -z "$CONTAINER_RUNNING" ]; then
-    echo "Docker container is not running. Starting it now..."
-    cd "$PROJECT_ROOT" && docker-compose up -d
-fi
-
-# Set up MCP servers in Docker
-if [ "$USE_DOCKER" = true ]; then
-    # Let's copy MCP files to Docker and start there
-    if [ -f "$PROJECT_ROOT/scripts/docker-copy-mcp.sh" ]; then
-        echo "Setting up MCP servers in Docker..."
-        bash "$PROJECT_ROOT/scripts/docker-copy-mcp.sh"
-        
-        # Start MCP servers in Docker
-        echo "Starting MCP servers in Docker..."
-        docker exec docker-docgen-1 bash -c "cd /app && MCP_LISTEN_INTERFACE=0.0.0.0 MCP_SERVER_HOST=0.0.0.0 /app/mcp-servers/docker-mcp-adapters.sh"
-        
-        # Verify MCP servers are running in Docker by directly checking in the container
-        echo "Verifying MCP servers are running in Docker..."
-        docker exec docker-docgen-1 bash -c "MCP_LISTEN_INTERFACE=0.0.0.0 node /app/mcp-servers/docker-check-mcp.cjs"
-        MCP_STATUS=$?
-        
-        if [ $MCP_STATUS -eq 0 ]; then
-            echo "MCP servers are running in Docker!"
-            # Create a flag file to indicate we should use Docker for MCP
-            echo "1" > "$PROJECT_ROOT/.mcp-in-docker"
-            # Also create a flag file inside the container
-            docker exec docker-docgen-1 bash -c "echo '1' > /app/.mcp-in-docker"
-            
-            # Verify port mappings
-            echo "Verifying Docker port mappings..."
-            CONTAINER_ID=$(docker ps --filter "name=docker-docgen" --format "{{.ID}}")
-            PORT_CHECK=$(docker port "$CONTAINER_ID" | grep "7865/tcp\|7866/tcp")
-            
-            if [ -z "$PORT_CHECK" ]; then
-                echo "Warning: MCP ports are not properly mapped in Docker!"
-                echo "Please ensure these ports are configured in your docker-compose.yml:"
-                echo "  - 7865:7865  # Coverage MCP"
-                echo "  - 7866:7866  # GitHub MCP"
-                echo "  - 7867:7867  # Coverage REST API"
-                echo "  - 7868:7868  # GitHub REST API"
-            else
-                echo "MCP port mappings confirmed: $PORT_CHECK"
-            fi
-        else
-            echo "Warning: MCP servers may not be running correctly in Docker!"
-            echo "Running debug utility to investigate..."
-            docker exec docker-docgen-1 bash -c "cd /app && node /app/mcp-servers/docker-debug.js"
-        fi
-    fi
-else
-    # Check and start MCP servers locally
-    if [ -f "$PROJECT_ROOT/mcp-servers/start-mcp-adapters.sh" ]; then
-        echo "Checking MCP servers..."
-        MCP_STATUS=$(cd "$PROJECT_ROOT" && node docgen.js check-servers 2>&1)
-        
-        if [[ "$MCP_STATUS" == *"Not running"* ]]; then
-            echo "Starting MCP servers..."
-            bash "$PROJECT_ROOT/mcp-servers/start-mcp-adapters.sh"
-        else
-            echo "MCP servers are running."
-        fi
-    fi
-fi
-
-# Run the DocGen workflow manager
-echo "Running DocGen workflow manager..."
-
-if [ "$USE_DOCKER" = true ]; then
-    # Set environment variables to connect to Docker MCP
-    export MCP_IN_DOCKER=1
+# Check if dependencies are installed
+check_dependencies() {
+  echo -e "${BLUE}Checking dependencies...${NC}"
+  
+  if [ ! -d "$PROJECT_ROOT/node_modules" ]; then
+    echo -e "${YELLOW}Node modules not found. Installing dependencies...${NC}"
+    cd "$PROJECT_ROOT" && npm install
     
-    # Execute the command in Docker
-    if [ -n "$COMMAND" ]; then
-        # Run specific command using docker commands (without TypeScript directly)
-        cd "$PROJECT_ROOT" && docker exec docker-docgen-1 bash -c "export MCP_IN_DOCKER=1 && cd /app && node docgen.js $COMMAND"
+    if [ $? -ne 0 ]; then
+      echo -e "${RED}Error: Failed to install dependencies.${NC}"
+      exit 1
     else
-        # Run init command by default
-        cd "$PROJECT_ROOT" && docker exec docker-docgen-1 bash -c "export MCP_IN_DOCKER=1 && cd /app && node docgen.js init"
+      echo -e "${GREEN}Dependencies installed successfully.${NC}"
     fi
-else
-    # Execute the command locally
-    if [ -n "$COMMAND" ]; then
-        # Run specific command
-        node "$PROJECT_ROOT/docgen.js" $COMMAND
-    else
-        # Run init command by default
-        node "$PROJECT_ROOT/docgen.js" init
-    fi
-fi
+  else
+    echo -e "${GREEN}Dependencies already installed.${NC}"
+  fi
+}
 
-# Display available commands
-echo ""
-echo "Available commands:"
-echo "  node docgen.js check-servers"
-echo "  node docgen.js start-servers"
-echo "  node docgen.js check-tests"
-echo "  node docgen.js analyze"
-echo ""
-echo "To toggle Claude features:"
-echo "  node docgen.js toggle-claude"
-echo ""
-echo "MCP server commands:"
-echo "  npx ts-node scripts/cross-platform.ts mcp start"
-echo "  npx ts-node scripts/cross-platform.ts mcp stop"
-echo "  npx ts-node scripts/cross-platform.ts mcp check"
-echo ""
-echo "=============================================="
+# Check and start MCP servers if needed
+start_mcp_servers() {
+  echo -e "${BLUE}Checking MCP servers...${NC}"
+  
+  # Run the check-servers command
+  cd "$PROJECT_ROOT" && npm run docgen:check-servers
+  
+  if [ $? -ne 0 ]; then
+    echo -e "${YELLOW}MCP servers not running. Starting them now...${NC}"
+    cd "$PROJECT_ROOT" && npm run docgen:start-servers
+    
+    if [ $? -ne 0 ]; then
+      echo -e "${RED}Error: Failed to start MCP servers.${NC}"
+      echo -e "You may need to start them manually with 'npm run docgen:start-servers'."
+    else
+      echo -e "${GREEN}MCP servers started successfully.${NC}"
+    fi
+  else
+    echo -e "${GREEN}MCP servers are running.${NC}"
+  fi
+}
+
+# Display the interactive menu
+show_menu() {
+  clear
+  echo -e "${MAGENTA}===== DocGen Development Workflow =====${NC}"
+  echo -e "${CYAN}Current platform: Unix ($(uname -s))${NC}"
+  echo -e "${CYAN}Project root: $PROJECT_ROOT${NC}"
+  echo
+  echo -e "1. ${GREEN}Check project status${NC}"
+  echo -e "2. ${BLUE}Run tests${NC}"
+  echo -e "3. ${BLUE}Start interactive interview${NC}"
+  echo -e "4. ${BLUE}Generate documentation${NC}"
+  echo -e "5. ${BLUE}Validate documentation${NC}"
+  echo -e "6. ${BLUE}Generate reports${NC}"
+  echo -e "7. ${YELLOW}GitHub workflow${NC}"
+  echo -e "8. ${YELLOW}Toggle Claude features${NC}"
+  echo -e "9. ${RED}Exit${NC}"
+  echo
+  echo -n "Enter your choice [1-9]: "
+}
+
+# Execute the user's choice
+execute_choice() {
+  local choice=$1
+  
+  case $choice in
+    1)
+      echo -e "${GREEN}Checking project status...${NC}"
+      cd "$PROJECT_ROOT" && npm run docgen:analyze
+      ;;
+    2)
+      echo -e "${BLUE}Running tests...${NC}"
+      cd "$PROJECT_ROOT" && npm test
+      ;;
+    3)
+      echo -e "${BLUE}Starting interactive interview...${NC}"
+      cd "$PROJECT_ROOT" && npm run interview
+      ;;
+    4)
+      echo -e "${BLUE}Generating documentation...${NC}"
+      # Add the command to generate documentation
+      cd "$PROJECT_ROOT" && echo "Documentation generation not yet implemented"
+      ;;
+    5)
+      echo -e "${BLUE}Validating documentation...${NC}"
+      cd "$PROJECT_ROOT" && npm run validate
+      ;;
+    6)
+      echo -e "${BLUE}Generating reports...${NC}"
+      cd "$PROJECT_ROOT" && npm run generate-reports
+      ;;
+    7)
+      echo -e "${YELLOW}Running GitHub workflow...${NC}"
+      cd "$PROJECT_ROOT" && npm run github:workflow
+      ;;
+    8)
+      echo -e "${YELLOW}Toggling Claude features...${NC}"
+      cd "$PROJECT_ROOT" && npm run docgen:toggle-claude
+      ;;
+    9)
+      echo -e "${RED}Exiting...${NC}"
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}Invalid choice. Please enter a number between 1 and 9.${NC}"
+      ;;
+  esac
+  
+  # Pause before returning to menu
+  echo
+  echo -n "Press Enter to continue..."
+  read
+}
+
+# Main execution
+main() {
+  # Run initial checks
+  check_requirements
+  check_dependencies
+  start_mcp_servers
+  
+  # Display interactive menu
+  while true; do
+    show_menu
+    read choice
+    execute_choice "$choice"
+  done
+}
+
+# Execute the main function
+main

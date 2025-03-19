@@ -1,217 +1,119 @@
-# Cross-Platform Usage Guide for DocGen
-
-This guide explains how to use DocGen on different operating systems (Windows, macOS, and Linux) using our Docker-first approach.
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Docker-Based Workflow (Recommended)](#docker-based-workflow-recommended)
-3. [Native Workflow](#native-workflow)
-4. [Windows-Specific Instructions](#windows-specific-instructions)
-5. [Troubleshooting](#troubleshooting)
+# Cross-Platform Usage for DocGen
 
 ## Overview
 
-DocGen supports cross-platform development through a Docker-first approach, which provides a consistent environment across all platforms. This approach ensures that all dependencies are properly installed and that scripts run consistently regardless of the host operating system.
+DocGen works seamlessly across Windows, macOS, and Linux. This guide explains how to use DocGen on different platforms.
 
-### Key Components
+## Quick Start
 
-- **Docker Environment**: Contains all necessary dependencies for TypeScript and Python
-- **Cross-Platform Script Runner**: Automatically detects your platform and runs the appropriate script
-- **PowerShell Wrapper Scripts**: Allow Windows users to run scripts natively
-- **Docker Command Utility**: Simplifies Docker operations
+```bash
+# Get started with DocGen (all platforms)
+npm run get-to-work:simple
 
-## Docker-Based Workflow (Recommended)
+# Show available commands
+npm run help
 
-The Docker-based workflow is recommended for all platforms as it provides the most consistent experience.
-
-### Prerequisites
-
-- [Docker](https://www.docker.com/products/docker-desktop) installed and running
-- [Node.js](https://nodejs.org/) (v14 or later)
-- [npm](https://www.npmjs.com/) (v6 or later)
-
-### Setup
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/mprestonsparks/DocGen.git
-   cd DocGen
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the Docker environment:
-   ```bash
-   npm run docker:start
-   ```
-
-### Common Tasks
-
-- **Run the interview**:
-  ```bash
-  npm run docker:interview
-  ```
-
-- **Validate documentation**:
-  ```bash
-  npm run docker:validate
-  ```
-
-- **Run tests**:
-  ```bash
-  npm run docker:test
-  ```
-
-- **Execute a custom command in Docker**:
-  ```bash
-  npm run docker:exec -- <command>
-  ```
-  Example:
-  ```bash
-  npm run docker:exec -- npm run lint
-  ```
-
-## Native Workflow
-
-For users who prefer to run DocGen natively, we provide platform-specific scripts.
-
-### macOS/Linux
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/mprestonsparks/DocGen.git
-   cd DocGen
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Run scripts directly:
-   ```bash
-   # Start the interview
-   npm run interview
-   
-   # Start MCP servers
-   npm run mcp:start
-   
-   # Run the GitHub workflow
-   npm run github:workflow
-   
-   # Run the get-to-work script
-   npm run get-to-work
-   ```
-
-### Windows
-
-1. Clone the repository:
-   ```powershell
-   git clone https://github.com/mprestonsparks/DocGen.git
-   cd DocGen
-   ```
-
-2. Install dependencies:
-   ```powershell
-   npm install
-   ```
-
-3. Run scripts using the cross-platform runner:
-   ```powershell
-   # Start the interview
-   npm run interview
-   
-   # Start MCP servers
-   npm run mcp:start
-   
-   # Run the GitHub workflow
-   npm run github:workflow
-   
-   # Run the get-to-work script
-   npm run get-to-work
-   ```
-
-## Windows-Specific Instructions
-
-Windows users have two options for running DocGen:
-
-1. **Docker-Based Workflow** (Recommended): Uses Docker to provide a Linux-like environment
-2. **Native Workflow**: Uses PowerShell scripts to run commands natively
-
-### PowerShell Scripts
-
-The following PowerShell scripts are available for Windows users:
-
-- `get-to-work.ps1`: Starts the interactive workflow
-- `mcp-servers/start-mcp-servers.ps1`: Starts the MCP servers
-- `scripts/run-github-workflow.ps1`: Runs the GitHub workflow
-- `scripts/run-monitoring.ps1`: Runs the monitoring script
-
-These scripts can be run directly from PowerShell:
-
-```powershell
-# Run directly
-.\get-to-work.ps1
-
-# Or use the npm script (recommended)
+# Run the interactive version (Unix only)
 npm run get-to-work
 ```
 
-### Cross-Platform Script Runner
+## Platform-Specific Usage
 
-The cross-platform script runner (`scripts/cross-platform.js`) automatically detects your platform and runs the appropriate script:
+### macOS and Linux
+
+Native shell scripts provide the best experience:
+
+```bash
+# Start DocGen workflow
+./get-to-work.sh
+
+# Start MCP servers
+npm run mcp:start
+
+# Run DocGen commands directly
+npm run docgen:check-servers
+```
+
+### Windows
+
+On Windows, use the PowerShell-compatible commands:
 
 ```powershell
-# Show help
-node --experimental-modules scripts/cross-platform.js --help
+# Using npm scripts (works on all Windows setups)
+npm run get-to-work:simple
 
-# Run a script
-node --experimental-modules scripts/cross-platform.js get-to-work
+# Using the Docker fallback
+npm run docker:start
+npm run docker:exec -- bash scripts/unix/get-to-work.sh
 ```
+
+### Using Docker (All Platforms)
+
+Docker provides a consistent environment across all platforms:
+
+```bash
+# Build and start the Docker container
+npm run docker:build
+npm run docker:start
+
+# Run the get-to-work script inside Docker
+npm run docker:exec -- bash scripts/unix/get-to-work.sh
+
+# Enter an interactive shell in Docker
+npm run docker:shell
+```
+
+## MCP Server Management
+
+Model Context Protocol (MCP) servers can be started on any platform:
+
+```bash
+# Cross-platform MCP server start
+npm run mcp:start
+
+# Check MCP server status
+npm run docgen:check-servers
+```
+
+## Environment Indicators
+
+DocGen creates indicator files to track the environment:
+
+- `.mcp-in-docker`: Created when using Docker
+- `mcp-servers/mcp-docker-running`: Indicates MCP servers running in Docker
+
+## When to Use Docker
+
+Docker is recommended when:
+
+1. You want a consistent environment across platforms
+2. You're having issues with native scripts on your platform
+3. You need to ensure MCP servers run with the exact same configuration
 
 ## Troubleshooting
 
-### Docker Issues
+### Script Issues
 
-- **Docker container not starting**:
-  ```bash
-  # Check Docker status
-  npm run docker:status
-  
-  # Restart Docker container
-  npm run docker:stop
-  npm run docker:start
-  ```
+If you encounter script issues:
 
-- **Permission issues with Docker**:
-  - On Linux, make sure your user is in the `docker` group
-  - On Windows, make sure Docker Desktop is running with the correct permissions
+1. Try the simplified script: `npm run get-to-work:simple`
+2. Use Docker as a fallback: `npm run docker:shell`
+3. Check if indicator files are present in correct locations
 
-### Windows-Specific Issues
+### MCP Server Issues
 
-- **PowerShell execution policy**:
-  If you encounter execution policy errors, run PowerShell as Administrator and execute:
-  ```powershell
-  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-  ```
+For MCP server problems:
 
-- **Path issues**:
-  If you encounter path-related issues, make sure to use the cross-platform script runner:
-  ```powershell
-  npm run get-to-work
-  ```
-  Instead of calling the PowerShell script directly.
+1. Check server status: `npm run docgen:check-servers`
+2. Try restarting servers: `npm run mcp:start`
+3. Verify the Docker environment: `npm run docker:status`
+4. Check for error logs in the terminal output
 
-### Module Format Issues
+## Cross-Platform Development
 
-- **ESM vs CommonJS**:
-  If you encounter module format issues, use the `--experimental-modules` flag:
-  ```bash
-  node --experimental-modules scripts/cross-platform.js get-to-work
-  ```
+When developing:
 
-For additional help or to report issues, please open an issue on the [GitHub repository](https://github.com/mprestonsparks/DocGen/issues).
+1. Test on multiple platforms when possible
+2. Use Docker to verify cross-platform compatibility
+3. Consider path differences (forward slashes vs. backslashes)
+4. Test MCP servers in different environments

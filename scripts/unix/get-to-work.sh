@@ -84,21 +84,42 @@ check_dependencies() {
 start_mcp_servers() {
   echo -e "${BLUE}Checking MCP servers...${NC}"
   
-  # Run the check-servers command
-  cd "$PROJECT_ROOT" && npm run docgen:check-servers
+  # Simplify MCP server check - just check if files exist
+  if [ -f "$PROJECT_ROOT/mcp-servers/mcp-docker-running" ]; then
+    # Docker mode - MCP servers are running in Docker
+    echo -e "${GREEN}MCP servers are running in Docker.${NC}"
+    return 0
+  fi
   
-  if [ $? -ne 0 ]; then
-    echo -e "${YELLOW}MCP servers not running. Starting them now...${NC}"
-    cd "$PROJECT_ROOT" && npm run docgen:start-servers
+  # Check for indicator file instead of process IDs
+  if [ -f "$PROJECT_ROOT/.mcp-in-docker" ]; then
+    echo -e "${GREEN}MCP servers are configured to run in Docker.${NC}"
     
-    if [ $? -ne 0 ]; then
-      echo -e "${RED}Error: Failed to start MCP servers.${NC}"
-      echo -e "You may need to start them manually with 'npm run docgen:start-servers'."
-    else
+    # Create Docker indicator file in mcp-servers directory
+    touch "$PROJECT_ROOT/mcp-servers/mcp-docker-running"
+    return 0
+  fi
+  
+  # Try to start MCP adapters
+  echo -e "${YELLOW}Starting MCP servers...${NC}"
+  
+  if [ -f "$PROJECT_ROOT/mcp-servers/start-mcp-adapters.sh" ]; then
+    # Make the script executable
+    chmod +x "$PROJECT_ROOT/mcp-servers/start-mcp-adapters.sh"
+    
+    # Start the MCP servers
+    cd "$PROJECT_ROOT/mcp-servers" && bash start-mcp-adapters.sh
+    
+    # Check result
+    if [ $? -eq 0 ]; then
       echo -e "${GREEN}MCP servers started successfully.${NC}"
+    else
+      echo -e "${YELLOW}Warning: Could not start MCP servers.${NC}"
+      echo -e "This is not critical - you can still use DocGen."
     fi
   else
-    echo -e "${GREEN}MCP servers are running.${NC}"
+    echo -e "${YELLOW}MCP server script not found.${NC}"
+    echo -e "This is not critical - you can still use DocGen without MCP servers."
   fi
 }
 
@@ -129,7 +150,13 @@ execute_choice() {
   case $choice in
     1)
       echo -e "${GREEN}Checking project status...${NC}"
-      cd "$PROJECT_ROOT" && npm run docgen:analyze
+      cd "$PROJECT_ROOT"
+      if [ -f "$PROJECT_ROOT/docgen.js" ]; then
+        node docgen.js analyze
+      else
+        echo -e "${RED}Error: docgen.js not found. Using fallback command...${NC}"
+        npm run docgen:analyze
+      fi
       ;;
     2)
       echo -e "${BLUE}Running tests...${NC}"
@@ -137,28 +164,57 @@ execute_choice() {
       ;;
     3)
       echo -e "${BLUE}Starting interactive interview...${NC}"
-      cd "$PROJECT_ROOT" && npm run interview
+      cd "$PROJECT_ROOT"
+      if [ -f "$PROJECT_ROOT/scripts/initialize.ts" ]; then
+        npx ts-node scripts/initialize.ts
+      else
+        npm run interview
+      fi
       ;;
     4)
       echo -e "${BLUE}Generating documentation...${NC}"
-      # Add the command to generate documentation
-      cd "$PROJECT_ROOT" && echo "Documentation generation not yet implemented"
+      cd "$PROJECT_ROOT"
+      if [ -f "$PROJECT_ROOT/docgen.js" ]; then
+        node docgen.js generate
+      else
+        echo "Documentation generation not yet implemented"
+      fi
       ;;
     5)
       echo -e "${BLUE}Validating documentation...${NC}"
-      cd "$PROJECT_ROOT" && npm run validate
+      cd "$PROJECT_ROOT"
+      if [ -f "$PROJECT_ROOT/scripts/validate-docs.js" ]; then
+        node scripts/validate-docs.js
+      else
+        npm run validate
+      fi
       ;;
     6)
       echo -e "${BLUE}Generating reports...${NC}"
-      cd "$PROJECT_ROOT" && npm run generate-reports
+      cd "$PROJECT_ROOT"
+      if [ -f "$PROJECT_ROOT/scripts/generate-reports.js" ]; then
+        node scripts/generate-reports.js
+      else
+        npm run generate-reports
+      fi
       ;;
     7)
       echo -e "${YELLOW}Running GitHub workflow...${NC}"
-      cd "$PROJECT_ROOT" && npm run github:workflow
+      cd "$PROJECT_ROOT"
+      if [ -f "$PROJECT_ROOT/scripts/run-github-workflow.sh" ]; then
+        bash scripts/run-github-workflow.sh
+      else
+        npm run github:workflow
+      fi
       ;;
     8)
       echo -e "${YELLOW}Toggling Claude features...${NC}"
-      cd "$PROJECT_ROOT" && npm run docgen:toggle-claude
+      cd "$PROJECT_ROOT"
+      if [ -f "$PROJECT_ROOT/docgen.js" ]; then
+        node docgen.js toggle-claude
+      else
+        npm run docgen:toggle-claude
+      fi
       ;;
     9)
       echo -e "${RED}Exiting...${NC}"

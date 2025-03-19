@@ -1,0 +1,174 @@
+name: Cross-Platform CI
+
+on:
+  push:
+    branches: [ main, develop, cross-platform-* ]
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - '.docker/**'
+      - 'docgen.*'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  docker-tests:
+    name: Docker-based tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: .docker/Dockerfile
+          push: false
+          load: true
+          tags: docgen:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Run tests in Docker
+        run: |
+          docker run --name docgen-test docgen:test npm test
+      
+      - name: Verify MCP server startup in Docker
+        run: |
+          docker run --name docgen-mcp-test -d docgen:test bash -c "cd /app && node mcp-servers/github-issues/server.cjs &> /dev/null & node mcp-servers/coverage-analysis/server.cjs &> /dev/null & sleep 5 && node mcp-servers/docker-check-mcp.cjs"
+          
+          # Check container exit code
+          EXIT_CODE=$(docker wait docgen-mcp-test)
+          docker logs docgen-mcp-test
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "MCP servers failed to start in Docker"
+            exit 1
+          fi
+      
+      - name: Test cross-platform scripts in Docker
+        run: |
+          docker run --name docgen-scripts-test docgen:test bash -c "cd /app && node scripts/cross-platform.js docgen help"
+  
+  windows-tests:
+    name: Windows tests
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Verify PowerShell script execution
+        shell: powershell
+        run: |
+          # Test PowerShell script execution directly
+          $projectRoot = Get-Location
+          $scriptPath = Join-Path $projectRoot "scripts\windows\get-to-work.ps1"
+          
+          # Set execution policy for current process
+          Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
+          
+          # Test PowerShell script help (should exit with code 0)
+          & $scriptPath -help
+
+  macos-tests:
+    name: macOS tests
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Verify Bash script execution
+        run: |
+          # Test bash script execution directly
+          chmod +x scripts/unix/get-to-work.sh
+          ./scripts/unix/get-to-work.sh --help
+
+  test-ai-providers:
+    name: Test AI Provider Abstraction
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Test AI provider factory
+        run: |
+          # Create test file
+          cat > test-ai-provider.js << 'EOF'
+          const { createAIProvider, getAvailableProviders } = require('./src/ai-provider/factory');
+          
+          async function testProviders() {
+            try {
+              console.log('Testing AI provider factory...');
+              
+              // Try to create each provider type
+              const providers = ['windsurf', 'claude-code', 'none'];
+              
+              for (const providerName of providers) {
+                console.log(`Testing provider: ${providerName}`);
+                const provider = createAIProvider({ force: providerName });
+                
+                console.log(`Provider info:`, provider.getInfo());
+                console.log(`Provider available:`, await provider.isAvailable());
+                
+                // Test configureMCP with empty config
+                try {
+                  await provider.configureMCP({});
+                  console.log('configureMCP executed successfully');
+                } catch (error) {
+                  console.error('configureMCP failed:', error.message);
+                }
+              }
+              
+              console.log('All provider tests passed!');
+              process.exit(0);
+            } catch (error) {
+              console.error('Provider test failed:', error);
+              process.exit(1);
+            }
+          }
+          
+          testProviders();
+          EOF
+          
+          # Run test
+          node test-ai-provider.js

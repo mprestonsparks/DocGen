@@ -327,16 +327,27 @@ For consistent development environments and easier team collaboration, DocGen pr
 npm run docker:build
 
 # Start the container
-npm run docker:up
+npm run docker:start
 
-# Enter the container shell
-npm run docker:shell
+# Execute commands in the container
+npm run docker:exec -- npm test
+
+# Check the container status
+npm run docker:status
 
 # Stop the container
-npm run docker:down
+npm run docker:stop
 ```
 
-These npm commands use Docker Compose to manage the containers. See the [Docker setup instructions](.docker/README.md) for more details.
+These npm commands use the enhanced cross-platform Docker utilities to manage containers. The Docker environment provides:
+
+1. **Full Cross-Platform Support**: Works on Windows, macOS, and Linux
+2. **MCP Server Integration**: DocGen's MCP servers run in Docker for consistent behavior
+3. **TypeScript and Python Support**: Multi-language development environment
+4. **Volume Mounting**: Edit code on your host machine, run it in the container
+5. **Environment Variables**: Automatic passing of environment variables between host and container
+
+For more details, see the [Cross-Platform Usage Guide](docs/CROSS_PLATFORM_USAGE.md) and [Cross-Platform Strategy](docs/CROSS_PLATFORM_STRATEGY.md).
 
 ## Template Structure
 

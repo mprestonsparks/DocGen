@@ -8,8 +8,18 @@ This guide explains how to use Docker with DocGen for cross-platform development
 # Start DocGen with Docker
 npm run docker:start
 
-# Run the get-to-work script inside Docker
-npm run docker:exec bash scripts/unix/get-to-work.sh
+# Run the AI-friendly workflow script inside Docker (with options)
+npm run docker:ai-workflow
+
+# Run the enhanced AI workflow with implementation phases
+npm run docker:exec node scripts/ai-friendly-workflow.js --max-iterations 3
+
+# Run with specific options (headless mode, max iterations, reset state)
+npm run docker:exec node scripts/ai-friendly-workflow.js --headless --max-iterations 5 --reset
+
+# Run the get-to-work script inside Docker (interactive mode)
+npm run docker:shell
+bash scripts/unix/get-to-work.sh
 
 # Run tests inside Docker
 npm run docker:exec npm test

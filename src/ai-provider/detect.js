@@ -1,59 +1,104 @@
 /**
- * AI Provider Detection
- * Detects the appropriate AI provider based on the operating system.
- * This module isolates the platform-specific detection logic.
+ * AI Provider Platform Detection
+ * 
+ * This module detects the appropriate AI provider based on the current platform
+ * and environment settings. It determines whether to use Claude Code, Windsurf,
+ * or other AI providers based on availability and user preferences.
  */
+
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 /**
- * Detect the appropriate AI provider for the current platform
- * @param {Object} config - Optional configuration with explicit provider preference
- * @returns {String} Provider name ('windsurf' for Windows, 'claude-code' for macOS)
+ * Detects the most appropriate AI provider for the current platform
+ * @param {Object} options - Detection options
+ * @param {boolean} [options.forceWindsurf] - Force using Windsurf regardless of platform
+ * @param {boolean} [options.forceClaudeCode] - Force using Claude Code regardless of platform
+ * @returns {string} The detected provider name ('claude-code', 'windsurf', etc.)
  */
-function detectAIProvider(config = {}) {
-  // Allow override through config or environment
-  if (config.aiProvider) {
-    return config.aiProvider;
-  }
-
+function detectAIProvider(options = {}) {
+  // Check for explicit environment variable or option overrides
   if (process.env.DOCGEN_AI_PROVIDER) {
     return process.env.DOCGEN_AI_PROVIDER;
   }
-
-  // Platform detection - Windows uses Windsurf, other platforms use existing provider
+  
+  if (options.forceWindsurf) {
+    return 'windsurf';
+  }
+  
+  if (options.forceClaudeCode) {
+    return 'claude-code';
+  }
+  
+  // Platform detection
   const isWindows = os.platform() === 'win32';
-  return isWindows ? 'windsurf' : 'claude-code';
+  const isMac = os.platform() === 'darwin';
+  
+  // Check for Claude CLI availability on macOS
+  if (isMac) {
+    try {
+      // Check if Claude CLI is installed
+      execSync('which claude', { stdio: 'ignore' });
+      return 'claude-code';
+    } catch (error) {
+      // Claude CLI not found, check for Windsurf as fallback
+      if (isWindsurfAvailable()) {
+        return 'windsurf';
+      }
+      // No AI provider available
+      return 'none';
+    }
+  }
+  
+  // On Windows, check for Windsurf
+  if (isWindows) {
+    if (isWindsurfAvailable()) {
+      return 'windsurf';
+    }
+    // Check for other Windows AI providers here (VSCode, Cursor, etc.)
+    
+    // No AI provider available
+    return 'none';
+  }
+  
+  // Linux or other platforms - limited support currently
+  return 'none';
 }
 
 /**
- * Check if Windsurf is installed on the system
- * @returns {boolean} True if Windsurf is detected
+ * Check if Windsurf is available on the system
+ * @returns {boolean} True if Windsurf is available
  */
-function isWindsurfInstalled() {
-  // Only relevant for Windows
-  if (os.platform() !== 'win32') {
-    return false;
+function isWindsurfAvailable() {
+  // Windows-specific check
+  if (os.platform() === 'win32') {
+    const windsurfPath = path.join(
+      os.homedir(), 
+      'AppData', 
+      'Local', 
+      'Programs', 
+      'windsurf', 
+      'Windsurf.exe'
+    );
+    return fs.existsSync(windsurfPath);
   }
-
-  try {
-    // Check common installation paths for Windsurf
-    const homedir = os.homedir();
-    const possiblePaths = [
-      path.join(homedir, 'AppData', 'Local', 'Programs', 'windsurf', 'Windsurf.exe'),
-      path.join('C:', 'Program Files', 'Windsurf', 'Windsurf.exe'),
-      path.join('C:', 'Program Files (x86)', 'Windsurf', 'Windsurf.exe')
-    ];
-
-    return possiblePaths.some(p => fs.existsSync(p));
-  } catch (error) {
-    console.error('Error checking for Windsurf installation:', error);
-    return false;
+  
+  // macOS check (less common but possible)
+  if (os.platform() === 'darwin') {
+    const windsurfPath = path.join(
+      '/Applications',
+      'Windsurf.app'
+    );
+    return fs.existsSync(windsurfPath);
   }
+  
+  // Not available on other platforms
+  return false;
 }
 
 module.exports = {
   detectAIProvider,
-  isWindsurfInstalled
+  isWindsurfAvailable
 };

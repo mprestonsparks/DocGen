@@ -2,80 +2,85 @@
 /**
  * Windsurf Configuration Script
  * 
- * This script configures Windsurf IDE to work with DocGen MCP servers.
- * It detects Windsurf and sets up the appropriate MCP configuration.
+ * This utility configures Windsurf IDE for integration with DocGen's MCP servers.
+ * It detects the appropriate paths and generates the necessary Windsurf config.
  */
-const createAIProvider = require('./factory');
+
 const path = require('path');
+const os = require('os');
+const { createAIProvider } = require('./factory');
 
 /**
- * Configure Windsurf to use DocGen MCP servers
+ * Configure Windsurf with DocGen MCP servers
  */
 async function configureWindsurf() {
   try {
-    console.log('\nConfiguring Windsurf IDE integration for DocGen...');
+    console.log('DocGen Windsurf Configuration Utility');
+    console.log('====================================\n');
     
     // Get the AI provider (should be Windsurf on Windows)
-    const provider = createAIProvider();
+    const provider = createAIProvider({ forceWindsurf: true });
     
-    // Check if Windsurf is available
-    if (!(await provider.isAvailable())) {
-      console.error('\nError: Windsurf is not available on this system');
-      console.log('Please install Windsurf from https://www.codeium.com/windsurf');
+    // Check if provider is Windsurf
+    if (provider.getInfo().name !== 'Windsurf') {
+      console.error('Error: This utility is for Windsurf IDE only');
+      console.log('Provider detected:', provider.getInfo().name);
       process.exit(1);
     }
     
-    // Configure MCP for Windsurf
-    const projectRoot = path.resolve(__dirname, '..', '..');
+    // Check if Windsurf is available
+    if (!(await provider.isAvailable())) {
+      console.error('Error: Windsurf is not available on this system');
+      console.log('\nPlease install Windsurf from https://www.codeium.com/windsurf');
+      console.log('After installing, run this utility again');
+      process.exit(1);
+    }
+    
+    console.log(`Detected Windsurf at: ${provider.getInfo().executablePath}`);
+    
+    // Initialize the provider
+    await provider.initialize();
+    
+    // Determine the MCP server paths
+    const projectRoot = path.resolve(__dirname, '../..');
     
     const serverPaths = {
-      github: path.join(projectRoot, 'mcp-servers', 'github-issues', 'server.js'),
-      coverage: path.join(projectRoot, 'mcp-servers', 'coverage-analysis', 'server.js')
+      github: path.join(projectRoot, 'mcp-servers', 'github-issues', 'server.cjs'),
+      coverage: path.join(projectRoot, 'mcp-servers', 'coverage-analysis', 'server.cjs')
     };
     
-    // First check if the server files exist
-    const fs = require('fs');
-    if (!fs.existsSync(serverPaths.github)) {
-      // Try alternative extensions (.cjs, .ts)
-      if (fs.existsSync(serverPaths.github.replace('.js', '.cjs'))) {
-        serverPaths.github = serverPaths.github.replace('.js', '.cjs');
-      } else if (fs.existsSync(serverPaths.github.replace('.js', '.ts'))) {
-        serverPaths.github = serverPaths.github.replace('.js', '.ts');
-      } else {
-        console.error(`\nError: GitHub MCP server not found at: ${serverPaths.github}`);
-        console.log('Please ensure the DocGen project is properly installed');
-        process.exit(1);
-      }
-    }
+    // Set environment variables
+    const serverEnv = {
+      MCP_SERVER_HOST: '127.0.0.1',
+      NODE_ENV: 'production'
+    };
     
-    if (!fs.existsSync(serverPaths.coverage)) {
-      // Try alternative extensions (.cjs, .ts)
-      if (fs.existsSync(serverPaths.coverage.replace('.js', '.cjs'))) {
-        serverPaths.coverage = serverPaths.coverage.replace('.js', '.cjs');
-      } else if (fs.existsSync(serverPaths.coverage.replace('.js', '.ts'))) {
-        serverPaths.coverage = serverPaths.coverage.replace('.js', '.ts');
-      } else {
-        console.error(`\nError: Coverage MCP server not found at: ${serverPaths.coverage}`);
-        console.log('Please ensure the DocGen project is properly installed');
-        process.exit(1);
-      }
-    }
+    console.log('\nConfiguring Windsurf MCP integration with the following settings:');
+    console.log(`- GitHub MCP Server: ${serverPaths.github}`);
+    console.log(`- Coverage MCP Server: ${serverPaths.coverage}`);
     
-    // Configure Windsurf MCP
-    const success = await provider.configureMCP({ serverPaths });
+    // Configure MCP for Windsurf
+    const success = await provider.configureMCP({ 
+      serverPaths, 
+      serverEnv 
+    });
     
     if (success) {
-      console.log('\nWindsurf MCP integration configured successfully');
+      console.log('\nWindsurf MCP integration configured successfully!');
       console.log(`Configuration saved to: ${provider.getInfo().configPath}`);
       
       console.log('\nInstructions:');
-      console.log('1. Open Windsurf IDE');
-      console.log('2. Open the Cascade panel (Ctrl+L)');
-      console.log('3. Cascade will now have access to DocGen MCP tools');
+      console.log('1. Start the DocGen MCP servers with: npm run mcp:start');
+      console.log('2. Open Windsurf IDE');
+      console.log('3. Open the Cascade panel (Ctrl+L)');
+      console.log('4. Cascade will now have access to DocGen MCP tools');
+      console.log('\nExample commands to try in Cascade:');
+      console.log('@github getIssues');
+      console.log('@coverage getCoverageMetrics');
+      
       process.exit(0);
     } else {
-      console.error('\nFailed to configure Windsurf IDE integration');
-      console.log('Please make sure Windsurf is installed and you have write permissions to the configuration directory');
+      console.error('Failed to configure Windsurf MCP integration');
       process.exit(1);
     }
   } catch (error) {
@@ -84,7 +89,7 @@ async function configureWindsurf() {
   }
 }
 
-// Run the configuration if this script is executed directly
+// Run the script if invoked directly
 if (require.main === module) {
   configureWindsurf();
 }

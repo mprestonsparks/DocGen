@@ -1,59 +1,107 @@
-# Windsurf Integration: Developer Notes
+# Windsurf IDE Integration - Developer Notes
 
-## Overview
+## Architecture Overview
 
-This document provides technical details about the DocGen-Windsurf integration for developers maintaining the codebase.
+The Windsurf IDE integration for DocGen follows the Provider design pattern to enable AI provider abstraction across platforms. This document explains the technical implementation for developers maintaining or extending this code.
 
-## Architecture
-
-The integration follows a provider-based architecture:
+## Component Structure
 
 ```
 src/ai-provider/
-├── detect.js           # OS detection and provider selection
-├── factory.js          # Factory pattern to create appropriate provider
-├── provider-interface.js # Interface all providers must implement
-├── configure-windsurf.js # CLI tool for Windsurf configuration
+├── provider-interface.js     # Abstract interface for AI providers
+├── detect.js                 # Platform detection logic
+├── factory.js                # Factory pattern implementation
+├── configure-windsurf.js     # Windsurf configuration utility
 └── providers/
-    └── windsurf.js     # Windsurf IDE provider implementation
+    ├── windsurf.js           # Windsurf IDE provider implementation
+    ├── claude-code.js        # Claude Code provider implementation
+    └── no-op.js              # Fallback provider implementation
 ```
 
-### Key Components
+### Key Design Patterns
 
-1. **AI Provider Detection**
-   - OS-based detection selects the appropriate provider
-   - Windows uses Windsurf, macOS uses Claude Code
-   - Environment variables can override the default selection
+1. **Interface Segregation**: A common interface defines what all AI providers must implement
+2. **Factory Pattern**: Runtime selection of appropriate provider implementation
+3. **Platform Detection**: Automatic selection based on OS and available tools
+4. **Singleton**: Each provider is exported as a singleton instance
+5. **Strategy Pattern**: Different implementations for the same interface
 
-2. **Provider Interface**
-   - Abstract interface with standard methods
-   - Ensures consistent API across providers
-   - Methods: `initialize()`, `isAvailable()`, `configureMCP()`, `getInfo()`
+## Provider Interface
 
-3. **Windsurf Provider**
-   - Windows-specific implementation
-   - Configures Windsurf's MCP settings
-   - Maps DocGen MCP servers to Windsurf's expected format
+The core interface that all AI providers must implement:
 
-4. **Configuration Script**
-   - CLI tool for Windsurf MCP configuration
-   - Detects Windsurf installation
-   - Creates/updates Windsurf MCP config file
-
-### Configuration Details
-
-The Windsurf provider writes configuration to:
-```
-%USERPROFILE%\.codeium\windsurf\mcp_config.json
+```javascript
+class AIProviderInterface {
+  async initialize() { ... }
+  async isAvailable() { ... }
+  async configureMCP(config) { ... }
+  getInfo() { ... }
+}
 ```
 
-Example configuration:
+### Methods
+
+- **initialize()**: Set up the provider and prepare it for use
+- **isAvailable()**: Check if this provider can be used on the current system
+- **configureMCP(config)**: Configure MCP servers for the provider
+- **getInfo()**: Return metadata about the provider
+
+## Factory Implementation
+
+The factory pattern creates the appropriate provider instance:
+
+```javascript
+function createAIProvider(options = {}) {
+  const providerName = detectAIProvider(options);
+  
+  switch (providerName) {
+    case 'windsurf':
+      return require('./providers/windsurf');
+    case 'claude-code':
+      return require('./providers/claude-code');
+    // ...other providers...
+    default:
+      return require('./providers/no-op');
+  }
+}
+```
+
+This allows DocGen to work with any AI provider through a consistent interface, while the implementation details are hidden.
+
+## Platform Detection
+
+The platform detection logic determines which provider to use:
+
+```javascript
+function detectAIProvider(options = {}) {
+  // Check for explicit environment variable or option overrides
+  if (process.env.DOCGEN_AI_PROVIDER) {
+    return process.env.DOCGEN_AI_PROVIDER;
+  }
+  
+  // Platform detection
+  const isWindows = os.platform() === 'win32';
+  const isMac = os.platform() === 'darwin';
+  
+  // Provider selection logic based on platform and availability
+  // ...
+}
+```
+
+## Windsurf Provider
+
+The Windsurf provider implements the interface for Windows users:
+
+### Configuration
+
+Windsurf requires a configuration file at `%USERPROFILE%\.codeium\windsurf\mcp_config.json` with this structure:
+
 ```json
 {
   "mcpServers": {
     "docgen-github": {
       "command": "node",
-      "args": ["C:/path/to/DocGen/mcp-servers/github-issues/server.cjs"],
+      "args": ["C:\\path\\to\\DocGen\\mcp-servers\\github-issues\\server.cjs"],
       "env": {
         "GITHUB_TOKEN": "${env:GITHUB_TOKEN}",
         "GITHUB_OWNER": "${env:GITHUB_OWNER}",
@@ -63,7 +111,7 @@ Example configuration:
     },
     "docgen-coverage": {
       "command": "node",
-      "args": ["C:/path/to/DocGen/mcp-servers/coverage-analysis/server.cjs"],
+      "args": ["C:\\path\\to\\DocGen\\mcp-servers\\coverage-analysis\\server.cjs"],
       "env": {
         "PORT": "7868"
       }
@@ -72,49 +120,137 @@ Example configuration:
 }
 ```
 
-## Implementation Notes
+The configuration specifies:
+1. The command to run each MCP server
+2. The arguments to pass to the command
+3. Environment variables required by the servers
 
-1. **Platform-Specific Code**
-   - All Windsurf-specific code is isolated in `src/ai-provider/`
-   - Code is only executed on Windows platforms
-   - No changes to macOS/Claude Code implementation
+### Path Handling
 
-2. **Script Execution**
-   - The `get-to-work.ps1` script calls `mcp-servers/start-mcp-servers.ps1`
-   - This starts the MCP servers and configures Windsurf
-   - The configuration is optional (controlled by `-ConfigureWindsurf` parameter)
+Special care is taken to handle Windows paths correctly:
 
-3. **MCP Configuration**
-   - DocGen MCP servers must be running for Windsurf to access them
-   - Server paths are resolved to absolute paths for reliability
-   - Environment variables are passed through to Windsurf
+```javascript
+const formatPath = (p) => {
+  if (this.isWindows) {
+    // Use Windows-style paths with double backslashes for JSON
+    return path.resolve(p).replace(/\\/g, '\\\\');
+  }
+  return path.resolve(p);
+};
+```
 
-## Future Enhancements
+This ensures paths with backslashes are properly escaped in the JSON configuration.
 
-1. **Additional IDE Support**
-   - The provider pattern allows for future IDE integrations
-   - Placeholder code exists for VSCode and Cursor
-   - New providers can be added by implementing the interface
+## Claude Code Provider
 
-2. **Enhanced Configuration**
-   - GUI-based configuration tool
-   - Auto-detection of configuration issues
-   - Better error handling and recovery
+The Claude Code provider is primarily for macOS users:
 
-3. **Performance Optimization**
-   - Startup time improvements
-   - Memory usage optimization
+### MCP Registration
 
-## Known Limitations
+Claude Code can auto-detect MCP servers, but explicit registration is supported:
 
-1. **Platform-Specific Behaviors**
-   - Some features may work differently between Windsurf and Claude Code
-   - Error handling may differ between platforms
+```javascript
+async configureMCP(config) {
+  if (config && config.forceRegister) {
+    await execPromise(`claude mcp remove github --scope user`);
+    await execPromise(`claude mcp add-http github http://localhost:7867 --scope user`);
+    // ... similar for coverage MCP ...
+  }
+  return true;
+}
+```
 
-2. **Environment Variables**
-   - Environment variable passing between DocGen and Windsurf can be fragile
-   - Use explicit environment file paths where possible
+## Integration with DocGen CLI
 
-3. **Startup Dependencies**
-   - MCP servers must be running before using Windsurf
-   - Docker container management can add complexity
+The AI provider system is integrated with the DocGen CLI:
+
+```javascript
+// In docgen.ts
+program
+  .command('configure-windsurf')
+  .description('Configure Windsurf IDE integration for Windows')
+  .action(async () => {
+    // Import and run the Windsurf configuration utility
+    // ...
+  });
+```
+
+## Error Handling and Fallbacks
+
+The system includes robust error handling:
+
+1. **Provider Availability**: Each provider checks if it can run on the current system
+2. **Graceful Fallbacks**: If a provider fails, the system falls back to a no-op provider
+3. **Informative Errors**: Clear error messages for troubleshooting
+4. **Missing Dependency Handling**: Checks for required software and suggests installations
+
+## Environment Variables
+
+The integration respects these environment variables:
+
+- **DOCGEN_AI_PROVIDER**: Explicitly set which provider to use
+- **GITHUB_TOKEN**, **GITHUB_OWNER**, **GITHUB_REPO**: For GitHub MCP functionality
+
+## Future Extensions
+
+The architecture is designed for extensibility:
+
+### Adding New Providers
+
+To add a new AI provider:
+
+1. Create a new provider class in `src/ai-provider/providers/`
+2. Implement the `AIProviderInterface` methods
+3. Add a case to the factory's switch statement
+4. Add detection logic to `detectAIProvider()`
+
+### Planned Providers
+
+The system is designed with future providers in mind:
+
+```javascript
+case 'vscode':
+  // Future support
+  provider = require('./providers/vscode');
+  break;
+case 'cursor':
+  // Future support
+  provider = require('./providers/cursor');
+  break;
+```
+
+## Testing Considerations
+
+When testing this system, consider:
+
+1. **Cross-Platform Testing**: Test on Windows, macOS, and Linux
+2. **Provider Availability**: Test with and without each provider installed
+3. **Configuration Generation**: Verify correct paths and settings in configs
+4. **Error Cases**: Test graceful handling of missing dependencies
+5. **Environment Variables**: Test override behavior with environment variables
+
+## Common Issues and Solutions
+
+### Windows Path Issues
+
+Windows paths need special handling due to backslashes:
+
+```javascript
+// Convert Windows paths to format suitable for JSON
+path.resolve(p).replace(/\\/g, '\\\\')
+```
+
+### Module Loading
+
+ESM vs CommonJS can cause issues. This implementation uses CommonJS for wider compatibility.
+
+### Singleton Pattern
+
+Providers are implemented as singletons:
+
+```javascript
+// Export a singleton instance
+module.exports = new WindsurfProvider();
+```
+
+This prevents multiple instances with different states from being created.

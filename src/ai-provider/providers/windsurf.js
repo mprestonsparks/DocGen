@@ -1,7 +1,10 @@
 /**
- * Windsurf IDE Provider Implementation
- * Integrates DocGen with Windsurf IDE on Windows
+ * Windsurf IDE AI Provider
+ * 
+ * This module implements the AI provider interface for Windsurf IDE,
+ * allowing DocGen to integrate with Windsurf's Cascade AI on Windows.
  */
+
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
@@ -11,10 +14,50 @@ const execPromise = util.promisify(exec);
 
 const AIProviderInterface = require('../provider-interface');
 
+/**
+ * Windsurf IDE Provider implementation
+ * Implements the AI Provider Interface for Windsurf IDE
+ */
 class WindsurfProvider extends AIProviderInterface {
   constructor() {
     super();
-    this.configPath = path.join(os.homedir(), '.codeium', 'windsurf', 'mcp_config.json');
+    
+    // Default config paths
+    this.configPath = this._getConfigPath();
+    this.isWindows = os.platform() === 'win32';
+    this.executablePath = this._getExecutablePath();
+  }
+  
+  /**
+   * Get the Windsurf configuration path based on the platform
+   * @private
+   * @returns {string} Path to the Windsurf MCP configuration file
+   */
+  _getConfigPath() {
+    if (os.platform() === 'win32') {
+      return path.join(os.homedir(), '.codeium', 'windsurf', 'mcp_config.json');
+    } else if (os.platform() === 'darwin') {
+      return path.join(os.homedir(), 'Library', 'Application Support', 'Windsurf', 'mcp_config.json');
+    } else {
+      // Linux or other - less common
+      return path.join(os.homedir(), '.config', 'windsurf', 'mcp_config.json');
+    }
+  }
+  
+  /**
+   * Get the Windsurf executable path based on the platform
+   * @private
+   * @returns {string} Path to the Windsurf executable
+   */
+  _getExecutablePath() {
+    if (os.platform() === 'win32') {
+      return path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'windsurf', 'Windsurf.exe');
+    } else if (os.platform() === 'darwin') {
+      return '/Applications/Windsurf.app/Contents/MacOS/Windsurf';
+    } else {
+      // Linux - less common
+      return path.join(os.homedir(), '.local', 'bin', 'windsurf');
+    }
   }
   
   /**
@@ -22,63 +65,50 @@ class WindsurfProvider extends AIProviderInterface {
    * @returns {Promise<boolean>} Success status
    */
   async initialize() {
-    if (!(await this.isAvailable())) {
-      console.log('Windsurf is not available on this system');
+    try {
+      // Check if Windsurf is available
+      if (!(await this.isAvailable())) {
+        console.error('Windsurf is not available on this system');
+        return false;
+      }
+      
+      // Create config directory if it doesn't exist
+      const configDir = path.dirname(this.configPath);
+      await fs.mkdir(configDir, { recursive: true });
+      
+      return true;
+    } catch (error) {
+      console.error(`Error initializing Windsurf provider: ${error.message}`);
       return false;
     }
-    
-    return true;
   }
   
   /**
-   * Check if Windsurf is available on this system
-   * @returns {Promise<boolean>} Availability status
+   * Check if Windsurf is available on the system
+   * @returns {Promise<boolean>} True if Windsurf is available
    */
   async isAvailable() {
-    // Only relevant for Windows
-    if (os.platform() !== 'win32') {
-      return false;
-    }
-    
     try {
-      // Check common installation paths for Windsurf
-      const homedir = os.homedir();
-      const possiblePaths = [
-        path.join(homedir, 'AppData', 'Local', 'Programs', 'windsurf', 'Windsurf.exe'),
-        path.join('C:', 'Program Files', 'Windsurf', 'Windsurf.exe'),
-        path.join('C:', 'Program Files (x86)', 'Windsurf', 'Windsurf.exe')
-      ];
-
-      for (const windsurfPath of possiblePaths) {
-        try {
-          await fs.access(windsurfPath);
-          return true;
-        } catch (err) {
-          // Path doesn't exist, try next one
-        }
-      }
-      
-      return false;
+      // Check if Windsurf executable exists
+      await fs.access(this.executablePath);
+      return true;
     } catch (error) {
-      console.error('Error checking Windsurf availability:', error);
       return false;
     }
   }
   
   /**
    * Configure Windsurf with MCP servers
-   * @param {Object} config - Configuration object with server paths
+   * @param {Object} config - Configuration object
+   * @param {Object} config.serverPaths - Paths to MCP server scripts
+   * @param {string} config.serverPaths.github - Path to GitHub MCP server
+   * @param {string} config.serverPaths.coverage - Path to Coverage MCP server
+   * @param {Object} config.serverEnv - Environment variables for MCP servers
    * @returns {Promise<boolean>} Success status
    */
   async configureMCP(config) {
-    // Only relevant for Windows
-    if (os.platform() !== 'win32') {
-      console.log('Windsurf configuration only supported on Windows');
-      return false;
-    }
-    
     try {
-      // Ensure the directory exists
+      // Ensure config directory exists
       const configDir = path.dirname(this.configPath);
       await fs.mkdir(configDir, { recursive: true });
       
@@ -89,16 +119,22 @@ class WindsurfProvider extends AIProviderInterface {
         mcpConfig = JSON.parse(existingConfig);
       } catch (error) {
         // File doesn't exist or is invalid, use default
+        console.log('Creating new Windsurf MCP configuration');
       }
       
-      // Resolve server paths to absolute paths
-      const githubServerPath = path.resolve(config.serverPaths.github);
-      const coverageServerPath = path.resolve(config.serverPaths.coverage);
+      // Format paths correctly for the platform
+      const formatPath = (p) => {
+        if (this.isWindows) {
+          // Use Windows-style paths with double backslashes for JSON
+          return path.resolve(p).replace(/\\/g, '\\\\');
+        }
+        return path.resolve(p);
+      };
       
       // Update with DocGen MCP servers
       mcpConfig.mcpServers['docgen-github'] = {
         command: 'node',
-        args: [githubServerPath],
+        args: [formatPath(config.serverPaths.github)],
         env: {
           GITHUB_TOKEN: '${env:GITHUB_TOKEN}',
           GITHUB_OWNER: '${env:GITHUB_OWNER}',
@@ -109,18 +145,25 @@ class WindsurfProvider extends AIProviderInterface {
       
       mcpConfig.mcpServers['docgen-coverage'] = {
         command: 'node',
-        args: [coverageServerPath],
+        args: [formatPath(config.serverPaths.coverage)],
         env: {
           PORT: '7868'
         }
       };
       
+      // Add any additional environment variables
+      if (config.serverEnv) {
+        Object.assign(mcpConfig.mcpServers['docgen-github'].env, config.serverEnv);
+        Object.assign(mcpConfig.mcpServers['docgen-coverage'].env, config.serverEnv);
+      }
+      
       // Write updated config
       await fs.writeFile(this.configPath, JSON.stringify(mcpConfig, null, 2));
-      console.log(`Windsurf MCP configuration saved to ${this.configPath}`);
+      
+      console.log(`Windsurf MCP configuration saved to: ${this.configPath}`);
       return true;
     } catch (error) {
-      console.error('Error configuring Windsurf MCP:', error);
+      console.error(`Error configuring Windsurf MCP: ${error.message}`);
       return false;
     }
   }
@@ -133,9 +176,37 @@ class WindsurfProvider extends AIProviderInterface {
     return {
       name: 'Windsurf',
       type: 'IDE',
-      version: 'latest',
-      configPath: this.configPath
+      platform: this.isWindows ? 'Windows' : os.platform(),
+      configPath: this.configPath,
+      executablePath: this.executablePath
     };
+  }
+  
+  /**
+   * Launch Windsurf IDE
+   * @returns {Promise<boolean>} Success status
+   */
+  async launch() {
+    try {
+      if (!(await this.isAvailable())) {
+        console.error('Windsurf is not available on this system');
+        return false;
+      }
+      
+      // Launch Windsurf
+      if (this.isWindows) {
+        await execPromise(`start "" "${this.executablePath}"`);
+      } else if (os.platform() === 'darwin') {
+        await execPromise(`open -a Windsurf`);
+      } else {
+        await execPromise(this.executablePath);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`Error launching Windsurf: ${error.message}`);
+      return false;
+    }
   }
 }
 

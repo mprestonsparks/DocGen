@@ -1,5 +1,13 @@
 /**
- * Abstract interface for AI providers
+ * Abstract Interface for AI Providers
+ * 
+ * This file defines the common interface that all AI providers must implement.
+ * It allows DocGen to work with different AI assistants (Claude Code, Windsurf, etc.)
+ * in a consistent way regardless of the underlying implementation.
+ */
+
+/**
+ * Abstract AI Provider Interface
  * All concrete providers must implement these methods
  */
 class AIProviderInterface {
@@ -21,7 +29,7 @@ class AIProviderInterface {
   
   /**
    * Configure the provider with MCP servers
-   * @param {Object} config - Configuration object
+   * @param {Object} config - Configuration object with server paths and settings
    * @returns {Promise<boolean>} Success status
    */
   async configureMCP(config) {
@@ -30,7 +38,7 @@ class AIProviderInterface {
   
   /**
    * Get provider information
-   * @returns {Object} Provider metadata
+   * @returns {Object} Provider metadata (name, type, version, etc.)
    */
   getInfo() {
     throw new Error('Method not implemented');

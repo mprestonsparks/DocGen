@@ -49,6 +49,7 @@
     "docgen:check-tests": "ts-node scripts/cross-platform.ts docgen check-tests",
     "docgen:analyze": "ts-node scripts/cross-platform.ts docgen analyze",
     "docgen:toggle-claude": "ts-node scripts/cross-platform.ts docgen toggle-claude",
+    "docgen:configure-windsurf": "node src/ai-provider/configure-windsurf.js",
     "claude:workflow": "ts-node scripts/claude/claude-workflow-manager.ts"
   },
   "repository": {

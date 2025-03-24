@@ -1,88 +1,52 @@
 /**
  * Logger utility for DocGen
  */
-import winston from 'winston';
-import { getLogFilePath, getLogLevel } from './config';
-
-// Create the logger
-const logger = winston.createLogger({
-  level: getLogLevel(),
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.splat(),
-    winston.format.json()
-  ),
-  defaultMeta: { service: 'docgen' },
-  transports: [
-    // Write to log file
-    new winston.transports.File({
-      filename: getLogFilePath(),
-      level: getLogLevel()
-    }),
-    // Write to console
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      ),
-      level: getLogLevel()
-    })
-  ]
-});
+import { LogLevel } from '../core/types/logging';
+import { getLogLevel, getLogFilePath } from './config';
 
 /**
- * Log an error message
- * @param message The message to log
- * @param meta Additional metadata
+ * Log a message at the specified level
  */
-export const error = (message: string, meta?: Record<string, unknown>): void => {
-  logger.error(message, meta);
-};
-
-/**
- * Log a warning message
- * @param message The message to log
- * @param meta Additional metadata
- */
-export const warn = (message: string, meta?: Record<string, unknown>): void => {
-  logger.warn(message, meta);
-};
-
-/**
- * Log an info message
- * @param message The message to log
- * @param meta Additional metadata
- */
-export const info = (message: string, meta?: Record<string, unknown>): void => {
-  logger.info(message, meta);
+export const log = (level: LogLevel, message: string, metadata?: Record<string, unknown>): void => {
+  const logLevel = getLogLevel();
+  const logLevels: LogLevel[] = ['debug', 'info', 'warn', 'error'];
+  
+  if (logLevels.indexOf(level) >= logLevels.indexOf(logLevel as LogLevel)) {
+    const timestamp = new Date().toISOString();
+    const logMessage = {
+      timestamp,
+      level,
+      message,
+      ...(metadata || {}),
+    };
+    console.log(JSON.stringify(logMessage));
+  }
 };
 
 /**
  * Log a debug message
- * @param message The message to log
- * @param meta Additional metadata
  */
-export const debug = (message: string, meta?: Record<string, unknown>): void => {
-  logger.debug(message, meta);
+export const debug = (message: string, metadata?: Record<string, unknown>): void => {
+  log('debug', message, metadata);
 };
 
 /**
- * Log a verbose message
- * @param message The message to log
- * @param meta Additional metadata
+ * Log an info message
  */
-export const verbose = (message: string, meta?: Record<string, unknown>): void => {
-  logger.verbose(message, meta);
+export const info = (message: string, metadata?: Record<string, unknown>): void => {
+  log('info', message, metadata);
 };
 
 /**
- * Get a named logger
- * @param name The logger name
- * @returns A logger instance
+ * Log a warning message
  */
-export const getLogger = (name: string): winston.Logger => {
-  return logger.child({ name });
+export const warn = (message: string, metadata?: Record<string, unknown>): void => {
+  log('warn', message, metadata);
 };
 
-export default logger;
+/**
+ * Log an error message
+ */
+export const error = (message: string, metadata?: Record<string, unknown>): void => {
+  log('error', message, metadata);
+};

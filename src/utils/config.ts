@@ -1,14 +1,17 @@
 /**
  * Configuration utility for DocGen
  */
-import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import { LLMConfig, LogLevel, ExistingProjectOptions } from '../types';
+import { LLMConfig, LLMProvider, LLMProviderConfigs } from '@core/types/llm';
+import { LogLevel } from '@core/types/logging';
+import { ExistingProjectOptions } from '@core/types/project';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables if not already loaded
+if (!process.env.NODE_ENV) {
+  require('dotenv').config();
+}
 
 /**
  * Get a configuration value from the environment,
@@ -58,18 +61,67 @@ export const getSessionStoragePath = (): string => {
   return getConfig<string>('SESSION_STORAGE_PATH', path.join(process.cwd(), '.sessions'));
 };
 
-/**
- * Get the log file path
- */
-export const getLogFilePath = (): string => {
-  return getConfig<string>('LOG_FILE', path.join(process.cwd(), 'logs/docgen.log'));
+const defaultProviderConfigs: LLMProviderConfigs = {
+  anthropic: {
+    model: 'claude-2',
+    maxTokens: 2000,
+    temperature: 0.7,
+  },
+  openai: {
+    model: 'gpt-3.5-turbo',
+    maxTokens: 2000,
+    temperature: 0.7,
+  },
+  cohere: {
+    model: 'command',
+    maxTokens: 2000,
+    temperature: 0.7,
+  },
+  fallback: {
+    model: 'fallback',
+    maxTokens: 2000,
+    temperature: 0.7,
+  }
 };
 
 /**
- * Get the log level
+ * Get the LLM configuration
  */
-export const getLogLevel = (): LogLevel => {
-  return getConfig<LogLevel>('LOG_LEVEL', 'info');
+export const getLLMConfig = (): LLMConfig => {
+  const availableProvider = ['anthropic', 'openai', 'cohere'].find(p => 
+    isProviderAvailable(p as LLMProvider)
+  ) as LLMProvider || 'fallback';
+
+  return {
+    provider: availableProvider,
+    maxTokens: 2000,
+    temperature: 0.7,
+    providerConfigs: defaultProviderConfigs
+  };
+};
+
+/**
+ * Check if a specific LLM provider is available
+ */
+const isProviderAvailable = (provider: LLMProvider): boolean => {
+  const apiKey = getLLMApiKey(provider);
+  return apiKey !== undefined && apiKey.length > 0;
+};
+
+/**
+ * Get the LLM API key for a provider
+ */
+export const getLLMApiKey = (provider: LLMProvider): string | undefined => {
+  switch (provider) {
+    case 'anthropic':
+      return process.env.ANTHROPIC_API_KEY;
+    case 'openai':
+      return process.env.OPENAI_API_KEY;
+    case 'cohere':
+      return process.env.COHERE_API_KEY;
+    case 'fallback':
+      return undefined;
+  }
 };
 
 /**
@@ -87,65 +139,28 @@ export const isAdvancedValidationEnabled = (): boolean => {
 };
 
 /**
- * Get the LLM configuration
+ * Get the log level
  */
-export const getLLMConfig = (): LLMConfig => {
-  const primaryProvider = getConfig<string>('LLM_PROVIDER', 'anthropic') as LLMProvider;
-  const fallbackProvidersStr = getConfig<string>('LLM_FALLBACK_PROVIDERS', '');
-  const fallbackProviders = fallbackProvidersStr 
-    ? fallbackProvidersStr.split(',').map(p => p.trim()) as LLMProvider[]
-    : undefined;
-  
-  return {
-    provider: primaryProvider,
-    model: getConfig<string>('LLM_MODEL', 'claude-3-5-sonnet-20240620'),
-    maxTokens: getConfig<number>('LLM_MAX_TOKENS', 4000),
-    temperature: getConfig<number>('LLM_TEMPERATURE', 0.7),
-    fallbackProviders,
-    timeout: getConfig<number>('LLM_TIMEOUT', 30000)
-  };
+export const getLogLevel = (): string => {
+  return process.env.LOG_LEVEL || 'info';
 };
 
 /**
- * Get provider-specific configurations
+ * Get the log file path
  */
-export const getLLMProviderConfigs = () => {
-  return {
-    anthropic: {
-      apiKey: process.env.ANTHROPIC_API_KEY,
-      model: getConfig<string>('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20240620'),
-      maxTokens: getConfig<number>('ANTHROPIC_MAX_TOKENS', 4000),
-      temperature: getConfig<number>('ANTHROPIC_TEMPERATURE', 0.7),
-    },
-    openai: {
-      apiKey: process.env.OPENAI_API_KEY,
-      model: getConfig<string>('OPENAI_MODEL', 'gpt-4o'),
-      maxTokens: getConfig<number>('OPENAI_MAX_TOKENS', 4000),
-      temperature: getConfig<number>('OPENAI_TEMPERATURE', 0.7),
-    },
-    cohere: {
-      apiKey: process.env.COHERE_API_KEY,
-      model: getConfig<string>('COHERE_MODEL', 'command-r'),
-      maxTokens: getConfig<number>('COHERE_MAX_TOKENS', 4000),
-      temperature: getConfig<number>('COHERE_TEMPERATURE', 0.7),
-    }
-  };
+export const getLogFilePath = (): string => {
+  return process.env.LOG_FILE_PATH || 'logs/docgen.log';
 };
 
 /**
- * Get API key for specified provider
+ * Check if any LLM API is available
  */
-export const getLLMApiKey = (provider: LLMProvider): string | undefined => {
-  switch (provider) {
-    case 'anthropic':
-      return process.env.ANTHROPIC_API_KEY;
-    case 'openai':
-      return process.env.OPENAI_API_KEY;
-    case 'cohere':
-      return process.env.COHERE_API_KEY;
-    default:
-      return undefined;
-  }
+export const isLLMApiAvailable = (): boolean => {
+  return Boolean(
+    process.env.ANTHROPIC_API_KEY ||
+    process.env.OPENAI_API_KEY ||
+    process.env.COHERE_API_KEY
+  );
 };
 
 /**
@@ -156,29 +171,14 @@ export const getAnthropicApiKey = (): string => {
 };
 
 /**
- * Check if a specific LLM provider is available
- */
-export const isProviderAvailable = (provider: LLMProvider): boolean => {
-  // Check if the API key is available
-  const apiKey = getLLMApiKey(provider);
-  if (!apiKey) {
-    return false;
-  }
-  
-  // Check if the package is available - this is done in the LLM module
-  // Here we just assume the API key check is sufficient
-  return true;
-};
-
-/**
  * Check if the LLM is available (any provider is available)
  */
 export const isLLMAvailable = (): boolean => {
   const config = getLLMConfig();
-  const providers = [config.provider, ...(config.fallbackProviders || [])];
+  const providers = Object.keys(config.providerConfigs);
   
   // Check if any provider is available
-  return providers.some(provider => isProviderAvailable(provider));
+  return providers.some(provider => isProviderAvailable(provider as LLMProvider));
 };
 
 /**
@@ -215,8 +215,9 @@ export const getExistingProjectDefaults = (): ExistingProjectOptions => {
     const config = yaml.load(fileContents) as any;
     
     return {
+      projectRoot: process.cwd(),
       path: '',
-      analysisDepth: config.analysis?.depth || 'standard',
+      analysisDepth: config.analysis?.depth ? Number(config.analysis.depth) : 1,
       outputDirectory: config.output?.directory || 'docgen-output',
       preserveExisting: true,
       generateIntegrationGuide: config.integration?.generateGuide !== false
@@ -226,8 +227,9 @@ export const getExistingProjectDefaults = (): ExistingProjectOptions => {
     
     // Return default configuration
     return {
+      projectRoot: process.cwd(),
       path: '',
-      analysisDepth: 'standard',
+      analysisDepth: 1,
       outputDirectory: 'docgen-output',
       preserveExisting: true,
       generateIntegrationGuide: true
@@ -241,7 +243,7 @@ export const getExistingProjectDefaults = (): ExistingProjectOptions => {
 function createDefaultExistingProjectConfig(configPath: string): void {
   const defaultConfig = `
 analysis:
-  depth: "standard"  # basic | standard | deep
+  depth: 1  # 1 = basic, 2 = standard, 3 = deep
   includeDotFiles: false
   maxFileSize: 10485760  # 10MB
   includeNodeModules: false
@@ -275,7 +277,7 @@ validation:
  */
 export const getExistingProjectOutputDir = (projectPath: string, outputDirectory?: string): string => {
   const defaults = getExistingProjectDefaults();
-  const outputDir = outputDirectory || defaults.outputDirectory;
+  const outputDir = outputDirectory || defaults.outputDirectory || 'docgen-output';
   
   // If path is absolute, use it directly
   if (path.isAbsolute(outputDir)) {

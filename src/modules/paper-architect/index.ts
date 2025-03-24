@@ -350,8 +350,32 @@ export async function updateTraceability(
   };
 }
 
+/**
+ * Paper Architect module
+ */
+
+export * from './extraction';
+
+/**
+ * Initialize paper implementation
+ */
+export async function initializePaperImplementation(paperPath: string): Promise<void> {
+  const { extractPaperContent } = await import('./extraction');
+  await extractPaperContent(paperPath);
+}
+
+/**
+ * Update traceability matrix
+ */
+export async function updateTraceabilityMatrix(paperPath: string): Promise<void> {
+  const { extractPaperContent } = await import('./extraction');
+  const paperContent = await extractPaperContent(paperPath);
+  // Implementation for updating traceability matrix
+  // This will be implemented in the traceability module
+  throw new Error('Not implemented');
+}
+
 // Additional exports from submodules will be added here
-// export * from './extraction';
 // export * from './knowledge';
 // export * from './specifications';
 // export * from './traceability';

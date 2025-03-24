@@ -28,9 +28,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "axios": "^1.8.4",
     "chalk": "^4.1.2",
     "cheerio": "^1.0.0",
+    "cohere-ai": "^7.16.0",
     "commander": "^9.5.0",
     "dotenv": "^16.4.7",
     "fs-extra": "^11.3.0",
@@ -38,6 +40,7 @@
     "inquirer": "^8.2.6",
     "lodash": "^4.17.21",
     "marked": "^4.3.0",
+    "openai": "^4.89.0",
     "ora": "^5.4.1",
     "pdf-parse": "^1.1.1",
     "yaml": "^2.7.0"

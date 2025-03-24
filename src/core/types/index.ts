@@ -23,6 +23,11 @@ export interface BaseProjectOptions {
 }
 
 /**
+ * Core type definitions for DocGen
+ */
+export * from './llm';
+
+/**
  * Log levels
  */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -160,4 +165,18 @@ export enum ErrorType {
   NETWORK = 'network',
   PERMISSION = 'permission',
   UNKNOWN = 'unknown'
+}
+
+/**
+ * Existing project options
+ */
+export interface ExistingProjectOptions {
+  name: string;
+  description: string;
+  language: string;
+  framework: string;
+  projectPath: string;
+  repositoryUrl?: string;
+  branchName?: string;
+  commitHash?: string;
 }

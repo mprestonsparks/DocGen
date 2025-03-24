@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import { Command } from 'commander';
-import * as paperArchitect from './paper_architect';
+import * as paperArchitect from './modules/paper-architect';
 import * as llm from './utils/llm';
 import * as logger from './utils/logger';
 

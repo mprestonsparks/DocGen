@@ -1,0 +1,178 @@
+---
+documentType: "PRD"
+schemaVersion: "1.1.0"
+documentVersion: "{{documentVersion}}"
+lastUpdated: "{{lastUpdated}}"
+status: "{{status}}"
+id: "DOC-PRD-001"
+project:
+  id: "{{projectId}}"
+  name: "{{projectName}}"
+related:
+  - id: "DOC-SRS-001"
+    type: "ELABORATED_BY"
+    description: "Software Requirements Specification"
+  - id: "DOC-SAD-001"
+    type: "IMPLEMENTED_BY"
+    description: "System Architecture Document"
+---
+
+# {{projectName}} Product Requirements Document
+
+## 1. DOCUMENT CONTROL
+
+### 1.1. REVISION HISTORY
+
+| REV_ID | DATE_ISO | DESCRIPTION | AUTHOR_ID |
+|--------|----------|-------------|-----------|
+| REV001 | {{lastUpdated}} | Initial version | {{authorId}} |
+
+## 2. PROJECT VISION
+
+```json
+{
+  "id": "PRD-VIS-001",
+  "vision_statement": "{{visionStatement}}",
+  "target_audience": [
+    {{#each targetAudience}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "key_objectives": [
+    {{#each objectives}}
+    {
+      "id": "OBJ{{padZero @index 3}}",
+      "description": "{{this.description}}",
+      "target": "{{this.target}}",
+      "measurement": "{{this.measurement}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+{{projectDescription}}
+
+## 3. PROBLEM STATEMENT
+
+```json
+{
+  "id": "PRD-PROB-001",
+  "current_challenges": [
+    {{#each challenges}}
+    {
+      "id": "CHAL{{padZero @index 3}}",
+      "description": "{{this.description}}",
+      "impact": "{{this.impact}}",
+      "affected_stakeholders": [
+        {{#each this.stakeholders}}
+        "{{this}}"{{#unless @last}},{{/unless}}
+        {{/each}}
+      ]
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+{{problemStatement}}
+
+## 4. SOLUTION APPROACH
+
+```json
+{
+  "id": "PRD-SOL-001",
+  "components": [
+    {{#each components}}
+    {
+      "id": "COMP{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "features": [
+        {{#each this.features}}
+        "{{this}}"{{#unless @last}},{{/unless}}
+        {{/each}}
+      ]
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 5. SUCCESS METRICS
+
+```json
+{
+  "id": "PRD-METR-001",
+  "metrics": [
+    {{#each metrics}}
+    {
+      "id": "METRIC{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "type": "{{this.type}}",
+      "target": "{{this.target}}",
+      "measurement": "{{this.measurement}}",
+      "baseline": "{{this.baseline}}",
+      "target_value": "{{this.targetValue}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 6. TECHNOLOGY STACK
+
+```json
+{
+  "id": "PRD-TECH-001",
+  "core_technologies": [
+    {{#each technologies}}
+    {
+      "id": "TECH{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "category": "{{this.category}}",
+      "purpose": "{{this.purpose}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "integration_points": [
+    {{#each integrations}}
+    {
+      "id": "INT{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "purpose": "{{this.purpose}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 7. TIMELINE & MILESTONES
+
+```json
+{
+  "id": "PRD-TIME-001",
+  "phases": [
+    {{#each phases}}
+    {
+      "id": "PHASE{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "duration": "{{this.duration}}",
+      "deliverables": [
+        {{#each this.deliverables}}
+        "{{this}}"{{#unless @last}},{{/unless}}
+        {{/each}}
+      ],
+      "dependencies": [
+        {{#each this.dependencies}}
+        "{{this}}"{{#unless @last}},{{/unless}}
+        {{/each}}
+      ]
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 8. DEVELOPMENT APPROACH
+
+{{developmentApproach}}

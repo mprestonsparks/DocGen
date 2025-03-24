@@ -1,0 +1,82 @@
+name: Validate Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**/*.md'
+      - 'docs/_templates/**/*.hbs'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**/*.md'
+      - 'docs/_templates/**/*.hbs'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: true
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        # Only enable cache if lock file exists
+        cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+    
+    - name: Check for lock file
+      id: check_files
+      run: |
+        if [ -f "package-lock.json" ]; then
+          echo "::set-output name=lockfile_exists::true"
+        else
+          echo "::set-output name=lockfile_exists::false"
+        fi
+    
+    - name: Install dependencies (with lock file)
+      if: steps.check_files.outputs.lockfile_exists == 'true'
+      run: npm ci
+      
+    - name: Install dependencies (without lock file)
+      if: steps.check_files.outputs.lockfile_exists != 'true'
+      run: npm install
+    
+    - name: Validate documentation
+      id: validate
+      run: npm run validate
+      continue-on-error: true
+      
+    - name: Generate reports
+      run: npm run generate-reports
+      
+    - name: Generate documentation badge
+      run: |
+        mkdir -p .github/badges
+        if [ "${{ steps.validate.outcome }}" == "success" ]; then
+          echo '{"schemaVersion":1,"label":"docs","message":"valid","color":"success"}' > .github/badges/documentation-status.json
+        else
+          echo '{"schemaVersion":1,"label":"docs","message":"invalid","color":"critical"}' > .github/badges/documentation-status.json
+        fi
+      
+    - name: Commit and push badge
+      if: github.ref == 'refs/heads/main'
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: "Update documentation status badge"
+        file_pattern: .github/badges/*
+        commit_options: "--no-verify"
+        push_options: "--force"
+      
+    - name: Archive documentation reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-reports
+        path: docs/reports/

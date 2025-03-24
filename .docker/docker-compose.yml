@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  docgen:
+    build:
+      context: ..
+      dockerfile: .docker/Dockerfile
+    container_name: docker-docgen-1
+    volumes:
+      - ..:/app
+      - /app/node_modules  # Prevent host node_modules from being mounted
+    ports:
+      - "3000:3000"  # For web server if needed
+      - "4000:4000"  # For API if needed
+      - "7321:7321"  # For GitHub MCP server
+      - "7322:7322"  # For Coverage MCP server
+    environment:
+      - NODE_ENV=development
+    command: tail -f /dev/null  # Keep container running

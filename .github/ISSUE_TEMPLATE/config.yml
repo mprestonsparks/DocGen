@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/yourusername/DocGen#readme
+    about: Check the README for usage information and documentation
+  - name: GitHub Discussions
+    url: https://github.com/yourusername/DocGen/discussions
+    about: Please ask and answer questions here
+  - name: Security Issues
+    url: https://github.com/yourusername/DocGen/security/policy
+    about: Please report security vulnerabilities here

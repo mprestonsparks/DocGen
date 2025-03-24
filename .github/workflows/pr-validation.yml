@@ -1,0 +1,164 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'docs/**/*.md'
+      - 'docs/_templates/**/*.hbs'
+      - 'scripts/**/*.js'
+      - 'scripts/**/*.ts'
+      - 'src/**/*.ts'
+      - 'tests/**/*.js'
+      - 'tests/**/*.ts'
+      - 'config/**/*.yaml'
+      - 'config/**/*.json'
+      - '.docker/**/*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          # Only enable cache if lock file exists
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+      
+      - name: Check for lock file
+        id: check_files
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "::set-output name=lockfile_exists::true"
+          else
+            echo "::set-output name=lockfile_exists::false"
+          fi
+      
+      - name: Install dependencies (with lock file)
+        if: steps.check_files.outputs.lockfile_exists == 'true'
+        run: npm ci
+        
+      - name: Install dependencies (without lock file)
+        if: steps.check_files.outputs.lockfile_exists != 'true'
+        run: npm install
+      
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+        env:
+          # Skip end-to-end tests that require GROBID in CI
+          RUN_E2E_TESTS: 'false'
+      
+      - name: Run linting
+        run: npm run lint
+      
+      - name: Calculate test coverage
+        id: coverage
+        run: |
+          COVERAGE=$(node -e "
+            try {
+              const fs = require('fs');
+              const report = JSON.parse(fs.readFileSync('./coverage/coverage-summary.json'));
+              if (report && report.total && report.total.lines) {
+                console.log(Math.round(report.total.lines.pct));
+              } else {
+                // Fall back to coverage-final.json if summary not available
+                const finalReport = JSON.parse(fs.readFileSync('./coverage/coverage-final.json'));
+                const totalLines = Object.values(finalReport).reduce((acc, file) => {
+                  const f = file as any;
+                  return acc + (f.s ? Object.keys(f.s).length : 0);
+                }, 0);
+                const coveredLines = Object.values(finalReport).reduce((acc, file) => {
+                  const f = file as any;
+                  return acc + (f.s ? Object.values(f.s).filter(v => v !== 0).length : 0);
+                }, 0);
+                console.log(Math.round((coveredLines / totalLines) * 100));
+              }
+            } catch (error) {
+              console.log('0');
+              console.error('Error calculating coverage:', error);
+            }
+          ")
+          echo "::set-output name=percentage::$COVERAGE"
+      
+      - name: Comment PR with coverage info
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          header: test-coverage
+          message: |
+            ## Coverage Report
+            Test coverage: ${{ steps.coverage.outputs.percentage }}%
+            
+            <details>
+              <summary>Coverage Details</summary>
+              
+              ```
+              $(cat ./coverage/lcov-report/index.html | grep -A 10 "<div class='fl pad1y space-right2'>")  
+              ```
+            </details>
+
+  validate:
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          # Only enable cache if lock file exists
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+      
+      - name: Check for lock file
+        id: check_files
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "::set-output name=lockfile_exists::true"
+          else
+            echo "::set-output name=lockfile_exists::false"
+          fi
+      
+      - name: Install dependencies (with lock file)
+        if: steps.check_files.outputs.lockfile_exists == 'true'
+        run: npm ci
+        
+      - name: Install dependencies (without lock file)
+        if: steps.check_files.outputs.lockfile_exists != 'true'
+        run: npm install
+      
+      - name: Validate documentation
+        run: npm run validate
+      
+      - name: Report validation issues
+        uses: actions/github-script@v7
+        if: ${{ failure() }}
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const report = JSON.parse(fs.readFileSync('docs/reports/validation.json', 'utf8'));
+              const issues = report.issues || [];
+              if (issues.length > 0) {
+                const issueBody = issues.map(i => `- **${i.severity}**: ${i.message} in ${i.file}`).join('\n');
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `## Documentation Validation Failed\n\n${issueBody}`
+                });
+              }
+            } catch (error) {
+              console.error('Error reading validation report:', error);
+            }

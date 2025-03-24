@@ -1,0 +1,305 @@
+---
+documentType: "STP"
+schemaVersion: "1.0.0"
+documentVersion: "{{documentVersion}}"
+lastUpdated: "{{lastUpdated}}"
+status: "{{status}}"
+id: "DOC-STP-001"
+project:
+  id: "{{projectId}}"
+  name: "{{projectName}}"
+related:
+  - id: "DOC-SRS-001"
+    type: "VERIFIES"
+    description: "Software Requirements Specification"
+  - id: "DOC-SDD-001"
+    type: "VERIFIES"
+    description: "Software Design Document"
+---
+
+# {{projectName}} Software Test Plan
+
+## 1. DOCUMENT CONTROL
+
+### 1.1. REVISION HISTORY
+
+| REV_ID | DATE_ISO | DESCRIPTION | AUTHOR_ID |
+|--------|----------|-------------|-----------|
+| REV001 | {{lastUpdated}} | Initial version | {{authorId}} |
+
+## 2. TEST APPROACH
+
+### 2.1. TEST OBJECTIVES
+
+```json
+{
+  "id": "STP-OBJ-001",
+  "description": "This document defines the testing strategy and approach for {{projectName}}.",
+  "objectives": [
+    {{#each testObjectives}}
+    {
+      "id": "OBJ{{padZero @index 3}}",
+      "description": "{{this.description}}",
+      "priority": "{{this.priority}}",
+      "success_criteria": "{{this.successCriteria}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+### 2.2. TEST SCOPE
+
+```json
+{
+  "id": "STP-SCOPE-001",
+  "description": "{{testScope.description}}",
+  "in_scope": [
+    {{#each testScope.inScope}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "out_of_scope": [
+    {{#each testScope.outOfScope}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+### 2.3. TEST TYPES
+
+```json
+{
+  "id": "STP-TYPES-001",
+  "test_types": [
+    {{#each testTypes}}
+    {
+      "id": "TEST{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "description": "{{this.description}}",
+      "focus_areas": [
+        {{#each this.focusAreas}}
+        "{{this}}"{{#unless @last}},{{/unless}}
+        {{/each}}
+      ]
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 3. TEST ENVIRONMENT
+
+### 3.1. HARDWARE REQUIREMENTS
+
+```json
+{
+  "id": "STP-HW-001",
+  "hardware_requirements": [
+    {{#each hardwareRequirements}}
+    {
+      "id": "HW{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "specification": "{{this.specification}}",
+      "purpose": "{{this.purpose}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+### 3.2. SOFTWARE REQUIREMENTS
+
+```json
+{
+  "id": "STP-SW-001",
+  "software_requirements": [
+    {{#each softwareRequirements}}
+    {
+      "id": "SW{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "version": "{{this.version}}",
+      "purpose": "{{this.purpose}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+### 3.3. TEST DATA
+
+```json
+{
+  "id": "STP-DATA-001",
+  "test_data_requirements": [
+    {{#each testDataRequirements}}
+    {
+      "id": "DATA{{padZero @index 3}}",
+      "description": "{{this.description}}",
+      "format": "{{this.format}}",
+      "source": "{{this.source}}",
+      "volume": "{{this.volume}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 4. TEST CASES
+
+{{#each testCaseCategories}}
+### 4.{{@index}}. {{this.name}}
+
+{{#each this.testCases}}
+#### 4.{{../index}}.{{@index}}. {{this.name}}
+
+```json
+{
+  "id": "TC-{{../index}}.{{@index}}",
+  "name": "{{this.name}}",
+  "description": "{{this.description}}",
+  "priority": "{{this.priority}}",
+  "test_type": "{{this.testType}}",
+  "requirements_verified": [
+    {{#each this.requirementsVerified}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "preconditions": [
+    {{#each this.preconditions}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "steps": [
+    {{#each this.steps}}
+    {
+      "number": {{@index}},
+      "action": "{{this.action}}",
+      "expected_result": "{{this.expectedResult}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "postconditions": [
+    {{#each this.postconditions}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+{{/each}}
+
+{{/each}}
+
+## 5. TEST SCHEDULE
+
+### 5.1. TEST MILESTONES
+
+```json
+{
+  "id": "STP-MILE-001",
+  "milestones": [
+    {{#each testMilestones}}
+    {
+      "id": "MILE{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "description": "{{this.description}}",
+      "target_date": "{{this.targetDate}}",
+      "deliverables": [
+        {{#each this.deliverables}}
+        "{{this}}"{{#unless @last}},{{/unless}}
+        {{/each}}
+      ]
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+### 5.2. TEST DEPENDENCIES
+
+```json
+{
+  "id": "STP-DEP-001",
+  "dependencies": [
+    {{#each testDependencies}}
+    {
+      "id": "DEP{{padZero @index 3}}",
+      "description": "{{this.description}}",
+      "impact": "{{this.impact}}",
+      "mitigation": "{{this.mitigation}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 6. TEST REPORTING
+
+### 6.1. TEST METRICS
+
+```json
+{
+  "id": "STP-METR-001",
+  "metrics": [
+    {{#each testMetrics}}
+    {
+      "id": "METR{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "description": "{{this.description}}",
+      "calculation": "{{this.calculation}}",
+      "target": "{{this.target}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+### 6.2. DEFECT MANAGEMENT
+
+```json
+{
+  "id": "STP-DEF-001",
+  "defect_severity_levels": [
+    {{#each defectSeverityLevels}}
+    {
+      "id": "SEV{{padZero @index 3}}",
+      "level": "{{this.level}}",
+      "description": "{{this.description}}",
+      "resolution_timeframe": "{{this.resolutionTimeframe}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "defect_lifecycle": [
+    {{#each defectLifecycle}}
+    {
+      "status": "{{this.status}}",
+      "description": "{{this.description}}",
+      "next_statuses": [
+        {{#each this.nextStatuses}}
+        "{{this}}"{{#unless @last}},{{/unless}}
+        {{/each}}
+      ]
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 7. REQUIREMENTS TRACEABILITY
+
+### 7.1. REQUIREMENTS TO TEST CASES MAPPING
+
+| REQ_ID | TEST_CASE_IDS | COVERAGE_STATUS |
+|--------|---------------|-----------------|
+{{#each requirementsTraceability}}
+| {{this.reqId}} | {{this.testCaseIds}} | {{this.coverageStatus}} |
+{{/each}}
+
+## 8. APPROVAL
+
+| ROLE | NAME | DATE | SIGNATURE |
+|------|------|------|-----------|
+| Test Manager | {{testManagerName}} | | |
+| Project Manager | {{projectManagerName}} | | |
+| QA Lead | {{qaLeadName}} | | |

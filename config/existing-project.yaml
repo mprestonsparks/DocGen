@@ -1,0 +1,19 @@
+analysis:
+  depth: "standard"  # basic | standard | deep
+  includeDotFiles: false
+  maxFileSize: 10485760  # 10MB
+  includeNodeModules: false
+  
+output:
+  directory: "docgen-output"
+  createSubdirectories: true
+  subdirectoryTemplate: "{documentType}/"
+  
+integration:
+  generateGuide: true
+  suggestMergeStrategy: true
+  
+validation:
+  validateExistingDocs: true
+  reportNonCompliance: true
+  attemptFixes: false

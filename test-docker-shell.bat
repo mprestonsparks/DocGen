@@ -1,0 +1,3 @@
+@echo off
+echo Testing shell script execution in Docker...
+docker exec docker-docgen-1 bash -c "echo '#!/bin/bash' > /tmp/test.sh && echo 'echo \"Shell script executed successfully\"' >> /tmp/test.sh && chmod +x /tmp/test.sh && /tmp/test.sh"

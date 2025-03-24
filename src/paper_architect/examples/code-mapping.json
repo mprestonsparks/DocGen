@@ -1,0 +1,41 @@
+[
+    {
+      "paperElementId": "algo-1",
+      "codeElement": {
+        "id": "class-1",
+        "type": "class",
+        "name": "AlgorithmImplementation",
+        "filePath": "src/algorithms/implementation.py",
+        "lineNumbers": [10, 150]
+      },
+      "type": "implements",
+      "confidence": 0.95,
+      "notes": "Main implementation of the paper's Algorithm 1"
+    },
+    {
+      "paperElementId": "concept-5",
+      "codeElement": {
+        "id": "function-3",
+        "type": "function",
+        "name": "preprocess_data",
+        "filePath": "src/utils/preprocessing.py",
+        "lineNumbers": [25, 40]
+      },
+      "type": "implements",
+      "confidence": 0.85,
+      "notes": "Implements the data preprocessing technique described in Section 3.2"
+    },
+    {
+      "paperElementId": "equation-2",
+      "codeElement": {
+        "id": "function-7",
+        "type": "function",
+        "name": "calculate_score",
+        "filePath": "src/model/scoring.py",
+        "lineNumbers": [55, 65]
+      },
+      "type": "implements",
+      "confidence": 0.9,
+      "notes": "Implementation of Equation 2 from the paper"
+    }
+  ]

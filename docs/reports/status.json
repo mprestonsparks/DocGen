@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-03-19T05:58:58.065Z",
+  "status": "success",
+  "message": "Documentation reports generated successfully",
+  "stats": {
+    "documentsValidated": 5,
+    "passedSchema": 5,
+    "passedReferences": 5,
+    "requirementsCoverage": 50
+  }
+}

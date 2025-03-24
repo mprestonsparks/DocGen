@@ -1,0 +1,47 @@
+decision:
+  id: "choose-test-type"
+  description: "Determines the most appropriate test type for a given module or function"
+  question: "What type of test should be generated?"
+  
+  factors:
+    - coverage-current: "The current coverage percentage for this module"
+    - module-complexity: "Cyclomatic complexity metric for the module"
+    - dependencies: "Number of external dependencies"
+    - interfaces: "Number of public interfaces"
+    - side-effects: "Whether the function has side effects"
+    - is-pure-function: "Whether the function is pure (deterministic, no side effects)"
+    - existing-tests: "Number of existing tests for this module"
+  
+  options:
+    - value: "unit-test-simple"
+      condition: "is-pure-function == true AND dependencies < 2"
+      template: "unit-test.template.ts"
+      next-decision: "choose-mock-strategy"
+      description: "Simple unit test for pure functions with minimal dependencies"
+      
+    - value: "unit-test-complex"
+      condition: "coverage-current < 40% AND dependencies < 4"
+      template: "unit-test.template.ts"
+      next-decision: "choose-mock-strategy"
+      description: "Complex unit test for functions with some dependencies"
+      
+    - value: "integration-test"
+      condition: "coverage-current >= 40% AND dependencies >= 3 AND dependencies < 6"
+      template: "integration-test.template.ts"
+      next-decision: "identify-integration-boundaries"
+      description: "Integration test for functions with multiple dependencies"
+      
+    - value: "boundary-test"
+      condition: "interfaces > 2 OR side-effects == true"
+      template: "boundary-test.template.ts"
+      next-decision: "choose-boundary-fixtures"
+      description: "Boundary test for functions with many interfaces or side effects"
+      
+    - value: "coverage-driven-test"
+      condition: "coverage-current < 30% AND existing-tests > 0"
+      template: "coverage-test.template.ts"
+      next-decision: "identify-uncovered-branches"
+      description: "Test specifically designed to target uncovered code branches"
+    
+  default: "unit-test-simple"
+  explanation_template: "Selected {{decision}} because {{reasons}}"

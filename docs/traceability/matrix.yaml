@@ -1,0 +1,146 @@
+# DocGen Traceability Matrix
+# Maps requirements to implementation and verification artifacts
+
+requirements:
+  - id: REQ-001
+    description: "System shall extract text and structure from academic papers"
+    implementation:
+      - module: "paper_architect/extraction"
+        file: "src/paper_architect/extraction/index.ts"
+        status: "partial"  # complete, partial, not-started
+        coverage: 68.75
+        issues:
+          - 12  # GitHub issue number
+    verification:
+      - test: "tests/paper_architect/extraction/extraction.test.ts"
+        status: "partial"
+
+  - id: REQ-002
+    description: "System shall create knowledge models from extracted paper content"
+    implementation:
+      - module: "paper_architect/knowledge"
+        file: "src/paper_architect/knowledge/index.ts"
+        status: "partial"
+        coverage: 62.28
+        issues:
+          - 13
+    verification:
+      - test: "tests/paper_architect/knowledge/knowledge.test.ts"
+        status: "partial"
+
+  - id: REQ-003
+    description: "System shall analyze existing projects to extract structure and components"
+    implementation:
+      - module: "utils/project-analyzer"
+        file: "src/utils/project-analyzer.ts"
+        status: "partial"
+        coverage: 36.27
+        issues:
+          - 14
+    verification:
+      - test: "tests/project-analyzer.test.ts"
+        status: "partial"
+      - test: "tests/project-analyzer-comprehensive.test.ts"
+        status: "partial"
+
+  - id: REQ-004
+    description: "System shall interact with LLM services to enhance analysis and generation"
+    implementation:
+      - module: "utils/llm"
+        file: "src/utils/llm.ts"
+        status: "partial"
+        coverage: 77.00
+        issues:
+          - 15
+    verification:
+      - test: "tests/llm.test.ts"
+        status: "partial"
+
+  - id: REQ-005
+    description: "System shall track implementation workflow from paper to code"
+    implementation:
+      - module: "paper_architect/workflow"
+        file: "src/paper_architect/workflow/index.ts"
+        status: "partial"
+        coverage: 59.82
+        issues:
+          - 16
+    verification:
+      - test: "tests/paper_architect/workflow/workflow.test.ts"
+        status: "partial"
+
+  - id: REQ-006
+    description: "System shall validate cross-references and document structure"
+    implementation:
+      - module: "utils/validation"
+        file: "src/utils/validation.ts"
+        status: "partial"
+        coverage: 95.72
+        issues:
+          - 17
+    verification:
+      - test: "tests/validation.test.ts"
+        status: "complete"
+
+  - id: REQ-007
+    description: "System shall systematically monitor implementation completeness"
+    implementation:
+      - module: "monitoring-system"
+        file: "docs/monitoring-system.md"
+        status: "complete"
+        issues:
+          - 18  # Implement Systematic Monitoring for Incomplete Code
+          - 22  # Review and Implement Monitoring System Documentation
+      - module: "utils/todo-validator"
+        file: "src/utils/todo-validator.ts"
+        status: "complete"
+        coverage: 85.2
+        issues:
+          - 18
+      - module: "scripts/validate-todos"
+        file: "scripts/validate-todos.ts"
+        status: "complete"
+        coverage: 90.3
+        issues:
+          - 18
+      - module: "scripts/run-monitoring"
+        file: "scripts/run-monitoring.sh"
+        status: "complete"
+        issues:
+          - 18
+      - module: "mcp-servers/github-issues"
+        file: "mcp-servers/github-issues/server.js"
+        status: "in-progress"
+        issues:
+          - 20
+          - 21
+      - module: "mcp-servers/coverage-analysis"
+        file: "mcp-servers/coverage-analysis/server.js"
+        status: "in-progress"
+        issues:
+          - 21
+    verification:
+      - test: "docs/reports/todo-report.md"
+        status: "complete"
+      - test: "docs/reports/enhanced-todo-report.md"
+        status: "complete"
+      - test: "docs/reports/implementation-status.md"
+        status: "complete"
+        
+  - id: REQ-008
+    description: "System shall provide MCP servers for enhanced development capabilities"
+    implementation:
+      - module: "mcp-servers/github-issues"
+        file: "mcp-servers/github-issues/server.js"
+        status: "in-progress"
+        issues:
+          - 20  # Implement GitHub Issues Workflow for Claude Code
+          - 21  # Implement Custom MCP Servers
+      - module: "mcp-servers/coverage-analysis"
+        file: "mcp-servers/coverage-analysis/server.js"
+        status: "in-progress"
+        issues:
+          - 21  # Implement Custom MCP Servers
+    verification:
+      - test: "manual-verification"
+        status: "in-progress"

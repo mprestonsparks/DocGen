@@ -1,0 +1,203 @@
+---
+documentType: "SRS"
+schemaVersion: "1.0.0"
+documentVersion: "{{documentVersion}}"
+lastUpdated: "{{lastUpdated}}"
+status: "{{status}}"
+id: "DOC-SRS-001"
+project:
+  id: "{{projectId}}"
+  name: "{{projectName}}"
+related:
+  - id: "DOC-SDD-001"
+    type: "ELABORATED_BY"
+    description: "Software Design Document"
+  - id: "DOC-STP-001"
+    type: "VERIFIED_BY"
+    description: "Software Test Plan"
+---
+
+# AI-OPTIMIZED SOFTWARE REQUIREMENTS SPECIFICATION
+
+## 1. DOCUMENT CONTROL
+
+### 1.1. REVISION HISTORY
+
+| REV_ID | DATE_ISO | DESCRIPTION | AUTHOR_ID |
+|--------|----------|-------------|-----------|
+| REV001 | {{lastUpdated}} | Initial version | {{authorId}} |
+
+### 1.2. APPROVALS
+
+| APPROVAL_ID | ROLE | ENTITY_ID | DATE_ISO | STATUS |
+|-------------|------|-----------|----------|--------|
+| APV001 | AUTHOR | {{authorId}} | {{lastUpdated}} | APPROVED |
+| APV002 | REVIEWER | AUTH002 | NULL | PENDING |
+| APV003 | APPROVER | AUTH003 | NULL | PENDING |
+
+## 2. INTRODUCTION
+
+### 2.1. PURPOSE
+
+{
+  "id": "SRS-PUR-001",
+  "description": "This document specifies the functional and non-functional requirements for the {{projectName}}.",
+  "audience": [
+    {{#each targetAudience}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "scope": "COMPLETE_SYSTEM"
+}
+
+### 2.2. SYSTEM SCOPE
+
+{
+  "id": "SRS-SCOPE-001",
+  "description": "{{projectDescription}}",
+  "includes": [
+    {{#each systemScope.includes}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "excludes": [
+    {{#each systemScope.excludes}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+
+### 2.3. DEFINITIONS
+
+| TERM_ID | TERM | DEFINITION | CONTEXT |
+|---------|------|------------|---------|
+{{#each definitions}}
+| {{this.id}} | {{this.term}} | {{this.definition}} | {{this.context}} |
+{{/each}}
+
+### 2.4. REFERENCES
+
+| REF_ID | TITLE | SOURCE | VERSION | URL |
+|--------|-------|--------|---------|-----|
+{{#each references}}
+| {{this.id}} | {{this.title}} | {{this.source}} | {{this.version}} | {{this.url}} |
+{{/each}}
+
+## 3. FUNCTIONAL REQUIREMENTS
+
+{{#each functionalRequirementCategories}}
+### 3.{{@index}}. {{this.name}}
+
+{{#each this.requirements}}
+#### 3.{{../index}}.{{@index}}. REQUIREMENT: {{this.name}}
+
+{
+  "id": "FR-{{../index}}.{{@index}}",
+  "type": "FUNCTIONAL",
+  "priority": "{{this.priority}}",
+  "description": "{{this.description}}",
+  "validation_method": "{{this.validationMethod}}",
+  "dependencies": [
+    {{#each this.dependencies}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "rationale": "{{this.rationale}}",
+  "acceptance_criteria": [
+    {{#each this.acceptanceCriteria}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+{{/each}}
+
+{{/each}}
+
+## 4. NON-FUNCTIONAL REQUIREMENTS
+
+{{#each nonFunctionalRequirementCategories}}
+### 4.{{@index}}. {{this.name}}
+
+{{#each this.requirements}}
+#### 4.{{../index}}.{{@index}}. REQUIREMENT: {{this.name}}
+
+{
+  "id": "NFR-{{../index}}.{{@index}}",
+  "type": "NON_FUNCTIONAL",
+  "category": "{{this.category}}",
+  "priority": "{{this.priority}}",
+  "description": "{{this.description}}",
+  "validation_method": "{{this.validationMethod}}",
+  "dependencies": [
+    {{#each this.dependencies}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "rationale": "{{this.rationale}}",
+  "acceptance_criteria": [
+    {{#each this.acceptanceCriteria}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "metrics": {
+    {{#each this.metrics}}
+    "{{@key}}": {"target": "{{this.target}}", "{{#if this.minimum}}minimum{{else}}maximum{{/if}}": "{{#if this.minimum}}{{this.minimum}}{{else}}{{this.maximum}}{{/if}}"}{{#unless @last}},{{/unless}}
+    {{/each}}
+  }
+}
+{{/each}}
+
+{{/each}}
+
+## 5. TRACEABILITY MATRIX
+
+### 5.1. REQUIREMENTS TO STAKEHOLDER NEEDS
+
+| REQ_ID | STAKEHOLDER_NEED_ID | RELATIONSHIP_TYPE | SATISFACTION_CRITERIA |
+|--------|---------------------|-------------------|------------------------|
+{{#each traceabilityStakeholder}}
+| {{this.reqId}} | {{this.needId}} | {{this.relationshipType}} | {{this.satisfactionCriteria}} |
+{{/each}}
+
+### 5.2. REQUIREMENTS TO SYSTEM COMPONENTS
+
+| REQ_ID | COMPONENT_ID | RELATIONSHIP_TYPE | IMPLEMENTATION_APPROACH |
+|--------|--------------|-------------------|-------------------------|
+{{#each traceabilityComponents}}
+| {{this.reqId}} | {{this.componentId}} | {{this.relationshipType}} | {{this.implementationApproach}} |
+{{/each}}
+
+## 6. APPENDICES
+
+### 6.1. DOCUMENT SCHEMA
+
+```yaml
+# Example Schema Definition
+documentType: string # Required, enum: SRS, SDD, STP, etc.
+schemaVersion: string # Required, semver format
+documentVersion: string # Required, semver format
+lastUpdated: string # Required, ISO 8601 date format
+status: string # Required, enum: DRAFT, REVIEW, APPROVED, etc.
+id: string # Required, format: DOC-{TYPE}-{NUMBER}
+project:
+  id: string # Required, format: PROJ-{NUMBER}
+  name: string # Required
+related:
+  - id: string # Required, format: DOC-{TYPE}-{NUMBER}
+    type: string # Required, enum: ELABORATED_BY, VERIFIED_BY, etc.
+    description: string # Optional
+```
+
+### 6.2. REQUIREMENT SCHEMA
+
+```yaml
+# Example Requirement Schema
+id: string # Required, format: FR-{NUMBER} or NFR-{NUMBER}
+type: string # Required, enum: FUNCTIONAL, NON_FUNCTIONAL
+priority: string # Required, enum: HIGH, MEDIUM, LOW
+description: string # Required
+validation_method: string # Required, enum: INSPECTION, TEST, DEMONSTRATION, ANALYSIS
+dependencies: array # Optional, list of requirement IDs
+rationale: string # Optional
+acceptance_criteria: array # Required, list of criteria strings
+```

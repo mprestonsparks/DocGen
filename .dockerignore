@@ -1,0 +1,45 @@
+# Node.js modules
+node_modules/
+
+# Build directories
+dist/
+build/
+
+# Local environment files
+.env
+.env.local
+
+# Logs
+logs/
+*.log
+
+# Version control
+.git/
+.github/
+.gitignore
+
+# Generated documentation
+docs/generated/
+
+# Session data
+.sessions/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker related
+Dockerfile
+docker-compose.yml
+.docker/data/
+
+# Test files
+coverage/
+*.test.js
+*.spec.js

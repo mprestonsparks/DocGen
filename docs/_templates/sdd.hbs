@@ -1,0 +1,334 @@
+---
+documentType: "SDD"
+schemaVersion: "1.0.0"
+documentVersion: "{{documentVersion}}"
+lastUpdated: "{{lastUpdated}}"
+status: "{{status}}"
+id: "DOC-SDD-001"
+project:
+  id: "{{projectId}}"
+  name: "{{projectName}}"
+related:
+  - id: "DOC-SRS-001"
+    type: "BASED_ON"
+    description: "Software Requirements Specification"
+  - id: "DOC-SAD-001"
+    type: "ELABORATED_FROM"
+    description: "System Architecture Document"
+  - id: "DOC-STP-001"
+    type: "VERIFIED_BY"
+    description: "Software Test Plan"
+---
+
+# {{projectName}} Software Design Document
+
+## 1. DOCUMENT CONTROL
+
+### 1.1. REVISION HISTORY
+
+| REV_ID | DATE_ISO | DESCRIPTION | AUTHOR_ID |
+|--------|----------|-------------|-----------|
+| REV001 | {{lastUpdated}} | Initial version | {{authorId}} |
+
+## 2. DESIGN OVERVIEW
+
+### 2.1. SYSTEM CONTEXT
+
+```json
+{
+  "id": "SDD-CTX-001",
+  "description": "{{projectDescription}}",
+  "scope": "{{designScope}}",
+  "relationships": [
+    {{#each relationships}}
+    {
+      "id": "REL{{padZero @index 3}}",
+      "entity": "{{this.entity}}",
+      "type": "{{this.type}}",
+      "description": "{{this.description}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+### 2.2. DESIGN APPROACH
+
+```json
+{
+  "id": "SDD-APP-001",
+  "methodology": "{{designApproach.methodology}}",
+  "patterns": [
+    {{#each designApproach.patterns}}
+    {
+      "id": "PAT{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "purpose": "{{this.purpose}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "guidelines": [
+    {{#each designApproach.guidelines}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+### 2.3. ASSUMPTIONS AND CONSTRAINTS
+
+```json
+{
+  "id": "SDD-ASM-001",
+  "assumptions": [
+    {{#each assumptions}}
+    {
+      "id": "ASM{{padZero @index 3}}",
+      "description": "{{this.description}}",
+      "impact": "{{this.impact}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "constraints": [
+    {{#each constraints}}
+    {
+      "id": "CON{{padZero @index 3}}",
+      "description": "{{this.description}}",
+      "type": "{{this.type}}",
+      "impact": "{{this.impact}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 3. COMPONENT DESIGN
+
+{{#each components}}
+### 3.{{@index}}. COMPONENT: {{this.name}}
+
+```json
+{
+  "id": "COMP{{padZero @index 3}}",
+  "name": "{{this.name}}",
+  "purpose": "{{this.purpose}}",
+  "responsibilities": [
+    {{#each this.responsibilities}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "dependencies": [
+    {{#each this.dependencies}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "requirements_implemented": [
+    {{#each this.requirementsImplemented}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+{{#if this.classes}}
+#### 3.{{@index}}.1. Class Structure
+
+{{#each this.classes}}
+- **{{this.name}}**
+  - *Purpose*: {{this.purpose}}
+  - *Properties*: {{#each this.properties}}{{this.name}} ({{this.type}}){{#unless @last}}, {{/unless}}{{/each}}
+  - *Methods*: {{#each this.methods}}{{this.name}}(){{#unless @last}}, {{/unless}}{{/each}}
+{{/each}}
+{{/if}}
+
+{{#if this.interfaces}}
+#### 3.{{@index}}.2. Interface Definitions
+
+{{#each this.interfaces}}
+```
+interface {{this.name}} {
+  {{#each this.methods}}
+  {{this.returnType}} {{this.name}}({{#each this.parameters}}{{this.type}} {{this.name}}{{#unless @last}}, {{/unless}}{{/each}})
+  {{/each}}
+}
+```
+{{/each}}
+{{/if}}
+
+{{/each}}
+
+## 4. DATA DESIGN
+
+### 4.1. DATA MODELS
+
+```json
+{
+  "id": "SDD-DM-001",
+  "data_models": [
+    {{#each dataModels}}
+    {
+      "id": "DM{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "type": "{{this.type}}",
+      "description": "{{this.description}}",
+      "attributes": [
+        {{#each this.attributes}}
+        {
+          "name": "{{this.name}}",
+          "type": "{{this.type}}",
+          "description": "{{this.description}}",
+          "constraints": "{{this.constraints}}"
+        }{{#unless @last}},{{/unless}}
+        {{/each}}
+      ]
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+### 4.2. DATA STORAGE
+
+```json
+{
+  "id": "SDD-DS-001",
+  "storage_mechanisms": [
+    {{#each dataStorage}}
+    {
+      "id": "DS{{padZero @index 3}}",
+      "type": "{{this.type}}",
+      "purpose": "{{this.purpose}}",
+      "details": "{{this.details}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 5. INTERFACE DESIGN
+
+### 5.1. USER INTERFACES
+
+```json
+{
+  "id": "SDD-UI-001",
+  "ui_components": [
+    {{#each userInterfaces}}
+    {
+      "id": "UI{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "type": "{{this.type}}",
+      "purpose": "{{this.purpose}}",
+      "interactions": [
+        {{#each this.interactions}}
+        "{{this}}"{{#unless @last}},{{/unless}}
+        {{/each}}
+      ]
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+### 5.2. API INTERFACES
+
+```json
+{
+  "id": "SDD-API-001",
+  "apis": [
+    {{#each apis}}
+    {
+      "id": "API{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "type": "{{this.type}}",
+      "purpose": "{{this.purpose}}",
+      "endpoints": [
+        {{#each this.endpoints}}
+        {
+          "path": "{{this.path}}",
+          "method": "{{this.method}}",
+          "description": "{{this.description}}"
+        }{{#unless @last}},{{/unless}}
+        {{/each}}
+      ]
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 6. IMPLEMENTATION APPROACH
+
+### 6.1. DEVELOPMENT TOOLS AND TECHNOLOGIES
+
+```json
+{
+  "id": "SDD-TOOLS-001",
+  "development_tools": [
+    {{#each developmentTools}}
+    {
+      "id": "TOOL{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "version": "{{this.version}}",
+      "purpose": "{{this.purpose}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "frameworks_libraries": [
+    {{#each frameworksLibraries}}
+    {
+      "id": "LIB{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "version": "{{this.version}}",
+      "purpose": "{{this.purpose}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+### 6.2. IMPLEMENTATION STRATEGY
+
+```json
+{
+  "id": "SDD-IMPL-001",
+  "phases": [
+    {{#each implementationPhases}}
+    {
+      "id": "PHASE{{padZero @index 3}}",
+      "name": "{{this.name}}",
+      "focus": "{{this.focus}}",
+      "duration": "{{this.duration}}",
+      "deliverables": [
+        {{#each this.deliverables}}
+        "{{this}}"{{#unless @last}},{{/unless}}
+        {{/each}}
+      ]
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "coding_standards": [
+    {{#each codingStandards}}
+    "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}
+```
+
+## 7. REQUIREMENTS TRACEABILITY
+
+### 7.1. FUNCTIONAL REQUIREMENTS MAPPING
+
+| REQ_ID | COMPONENT_ID | COVERAGE | VERIFICATION_METHOD |
+|--------|--------------|----------|---------------------|
+{{#each functionalRequirementsMapping}}
+| {{this.reqId}} | {{this.componentId}} | {{this.coverage}} | {{this.verificationMethod}} |
+{{/each}}
+
+### 7.2. NON-FUNCTIONAL REQUIREMENTS MAPPING
+
+| REQ_ID | DESIGN_ELEMENT | IMPLEMENTATION_APPROACH | VERIFICATION_METHOD |
+|--------|----------------|-------------------------|---------------------|
+{{#each nonFunctionalRequirementsMapping}}
+| {{this.reqId}} | {{this.designElement}} | {{this.implementationApproach}} | {{this.verificationMethod}} |
+{{/each}}

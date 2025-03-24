@@ -1,0 +1,187 @@
+# DocGen Project Defaults
+
+# Default schema versions
+schema_versions:
+  prd: "1.1.0"
+  srs: "1.0.0"
+  sad: "1.0.0"
+  sdd: "1.0.0"
+  stp: "1.0.0"
+  paper_extraction: "1.0.0"
+  knowledge_model: "1.0.0" 
+  executable_spec: "1.0.0"
+  traceability_matrix: "1.0.0"
+  implementation_plan: "1.0.0"
+
+# Default document versions
+document_versions:
+  prd: "1.0.0"
+  srs: "1.0.0"
+  sad: "1.0.0"
+  sdd: "1.0.0"
+  stp: "1.0.0"
+  paper_extraction: "1.0.0"
+  knowledge_model: "1.0.0"
+  executable_spec: "1.0.0"
+  traceability_matrix: "1.0.0"
+  implementation_plan: "1.0.0"
+
+# Default document statuses
+document_statuses:
+  - DRAFT
+  - REVIEW
+  - APPROVED
+  - DEPRECATED
+
+# Default relationship types
+relationship_types:
+  - ELABORATED_BY
+  - IMPLEMENTED_BY
+  - VERIFIED_BY
+  - REFERENCES
+  - DEPENDS_ON
+
+# Default project types with recommended documents
+project_types:
+  WEB:
+    recommended_docs:
+      - prd
+      - srs
+      - sad
+      - sdd
+      - stp
+    additional_docs:
+      - api_doc
+      - component_library
+  
+  MOBILE:
+    recommended_docs:
+      - prd
+      - srs
+      - sad
+      - sdd
+      - stp
+    additional_docs:
+      - ui_guide
+      - api_doc
+  
+  API:
+    recommended_docs:
+      - prd
+      - srs
+      - sad
+      - sdd
+      - stp
+    additional_docs:
+      - api_doc
+      - integration_guide
+  
+  DESKTOP:
+    recommended_docs:
+      - prd
+      - srs
+      - sad
+      - sdd
+      - stp
+    additional_docs:
+      - user_manual
+      - installation_guide
+  
+  ACADEMIC_PAPER:
+    recommended_docs:
+      - paper_extraction
+      - knowledge_model
+      - executable_spec
+      - traceability_matrix
+      - implementation_plan
+    additional_docs:
+      - sdd
+      - stp
+  
+  OTHER:
+    recommended_docs:
+      - prd
+      - srs
+      - sad
+      - sdd
+      - stp
+    additional_docs: []
+
+# Default section requirements
+section_requirements:
+  prd:
+    - DOCUMENT_CONTROL
+    - PROJECT_VISION
+    - PROBLEM_STATEMENT
+    - SOLUTION_APPROACH
+    - SUCCESS_METRICS
+    - TIMELINE_MILESTONES
+  
+  srs:
+    - DOCUMENT_CONTROL
+    - INTRODUCTION
+    - FUNCTIONAL_REQUIREMENTS
+    - NON_FUNCTIONAL_REQUIREMENTS
+    - TRACEABILITY_MATRIX
+  
+  sad:
+    - ARCHITECTURE_OVERVIEW
+    - COMPONENT_DETAILS
+    - INTELLIGENCE_LAYER
+    - WORKFLOW_PROCESS
+    - TECHNICAL_IMPLEMENTATION
+  
+  sdd:
+    - DOCUMENT_CONTROL
+    - DESIGN_OVERVIEW
+    - COMPONENT_DESIGN
+    - DATA_DESIGN
+    - INTERFACE_DESIGN
+    - IMPLEMENTATION_APPROACH
+  
+  stp:
+    - DOCUMENT_CONTROL
+    - TEST_APPROACH
+    - TEST_ENVIRONMENT
+    - TEST_CASES
+    - TEST_SCHEDULE
+    
+  paper_extraction:
+    - DOCUMENT_CONTROL
+    - PAPER_METADATA
+    - STRUCTURE_OVERVIEW
+    - ALGORITHMS
+    - EQUATIONS
+    - FIGURES_TABLES
+    - CITATIONS
+    
+  knowledge_model:
+    - DOCUMENT_CONTROL
+    - CONCEPT_DEFINITIONS
+    - RELATIONSHIP_MAPPINGS
+    - ONTOLOGY_ALIGNMENT
+    - DOMAIN_SPECIFIC_ATTRIBUTES
+    
+  executable_spec:
+    - DOCUMENT_CONTROL
+    - SPECIFICATION_OVERVIEW
+    - INPUT_OUTPUT_DEFINITIONS
+    - ALGORITHM_STEPS
+    - CODE_BLOCKS
+    - VERIFICATION_FIXTURES
+    
+  traceability_matrix:
+    - DOCUMENT_CONTROL
+    - PAPER_ELEMENTS
+    - CODE_ELEMENTS
+    - RELATIONSHIPS
+    - COVERAGE_METRICS
+    - VISUALIZATION
+    
+  implementation_plan:
+    - DOCUMENT_CONTROL
+    - PLAN_OVERVIEW
+    - IMPLEMENTATION_STAGES
+    - COMPONENT_DEPENDENCIES
+    - VERIFICATION_STRATEGY
+    - CHALLENGE_ASSESSMENT

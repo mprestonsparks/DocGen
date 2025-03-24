@@ -1,0 +1,168 @@
+name: Documentation CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'docs/**/*.md'
+      - 'docs/_templates/**/*.hbs'
+      - 'scripts/**/*.js'
+      - 'scripts/**/*.ts'
+      - 'src/**/*.ts'
+      - 'tests/**/*.js'
+      - 'tests/**/*.ts'
+      - 'config/**/*.yaml'
+      - 'config/**/*.json'
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          # Only enable cache if lock file exists
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+      
+      - name: Check for lock file
+        id: check_files
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "::set-output name=lockfile_exists::true"
+          else
+            echo "::set-output name=lockfile_exists::false"
+          fi
+      
+      - name: Install dependencies (with lock file)
+        if: steps.check_files.outputs.lockfile_exists == 'true'
+        run: npm ci
+        
+      - name: Install dependencies (without lock file)
+        if: steps.check_files.outputs.lockfile_exists != 'true'
+        run: npm install
+      
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+      
+      - name: Run linting
+        run: npm run lint
+        
+      - name: Generate Coverage Badge
+        id: coverage_badge
+        run: |
+          mkdir -p .github/badges
+          
+          # Calculate coverage from Jest output
+          if [ -f "./coverage/coverage-summary.json" ]; then
+            COVERAGE=$(node -e "
+              try {
+                const fs = require('fs');
+                const summary = JSON.parse(fs.readFileSync('./coverage/coverage-summary.json'));
+                if (summary && summary.total && summary.total.lines) {
+                  console.log(Math.round(summary.total.lines.pct));
+                } else {
+                  throw new Error('Invalid summary format');
+                }
+              } catch (error) {
+                console.log('0');
+              }
+            ")
+          elif [ -f "./coverage/lcov-report/index.html" ]; then
+            # Extract coverage from HTML report as a fallback
+            COVERAGE=$(grep -o 'class="fraction">[0-9]\+\/[0-9]\+' ./coverage/lcov-report/index.html | head -1 | grep -o '[0-9]\+\/[0-9]\+' | awk -F'/' '{ printf("%d\n", ($1/$2)*100) }')
+          else
+            # Default if no coverage files found
+            COVERAGE=0
+          fi
+          
+          # Validate that coverage is a number
+          if ! [[ $COVERAGE =~ ^[0-9]+$ ]]; then
+            COVERAGE=0
+            echo "Warning: Coverage calculation failed, using 0%"
+          fi
+          
+          echo "Coverage percentage: $COVERAGE%"
+          
+          # Determine badge color based on coverage
+          if [ "$COVERAGE" -ge 90 ]; then
+            COLOR="success"
+          elif [ "$COVERAGE" -ge 80 ]; then
+            COLOR="yellowgreen"
+          elif [ "$COVERAGE" -ge 70 ]; then
+            COLOR="yellow"
+          elif [ "$COVERAGE" -ge 60 ]; then
+            COLOR="orange"
+          else
+            COLOR="critical"
+          fi
+          
+          # Generate coverage badge
+          echo "{\"schemaVersion\":1,\"label\":\"coverage\",\"message\":\"${COVERAGE}%\",\"color\":\"${COLOR}\"}" > .github/badges/coverage.json
+          echo "::set-output name=coverage::$COVERAGE"
+      
+      # This will be used to commit the badge to the repository
+      - name: Commit and push coverage badge
+        if: github.ref == 'refs/heads/main'
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Update test coverage badge"
+          file_pattern: .github/badges/*
+          commit_options: "--no-verify"
+          push_options: "--force"
+
+  validate:
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          # Only enable cache if lock file exists
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+      
+      - name: Check for lock file
+        id: check_files
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "::set-output name=lockfile_exists::true"
+          else
+            echo "::set-output name=lockfile_exists::false"
+          fi
+      
+      - name: Install dependencies (with lock file)
+        if: steps.check_files.outputs.lockfile_exists == 'true'
+        run: npm ci
+        
+      - name: Install dependencies (without lock file)
+        if: steps.check_files.outputs.lockfile_exists != 'true'
+        run: npm install
+      
+      - name: Validate documentation
+        run: npm run validate
+      
+      - name: Generate reports
+        run: npm run generate-reports
+      
+      - name: Archive documentation reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-reports
+          path: docs/reports/

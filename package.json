@@ -82,7 +82,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "@octokit/rest": "^21.1.1",
-    "axios": "^1.8.3",
+    "axios": "^1.8.4",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
     "dotenv": "^16.4.7",

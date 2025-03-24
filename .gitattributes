@@ -1,0 +1,14 @@
+# Auto detect text files and perform LF normalization
+* text=auto eol=lf
+
+# Exclude these files from GitHub's language statistics
+/@claude-code/*.md linguist-documentation
+/docs/reports/*.json linguist-generated=true
+/docs/generated/*.md linguist-generated=true
+
+# Treat documentation templates as Handlebars
+*.hbs linguist-language=Handlebars
+
+# Mark scripts as non-generated
+/scripts/*.js linguist-generated=false
+/src/**/*.ts linguist-generated=false

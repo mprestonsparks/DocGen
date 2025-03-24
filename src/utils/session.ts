@@ -4,7 +4,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { SessionData, SessionMetadata, ProjectInfo } from '../types';
+import { SessionData, SessionMetadata } from '../types';
 import { getSessionStoragePath } from './config';
 import * as logger from './logger';
 

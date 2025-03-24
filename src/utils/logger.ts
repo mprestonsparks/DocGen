@@ -76,4 +76,13 @@ export const verbose = (message: string, meta?: Record<string, unknown>): void =
   logger.verbose(message, meta);
 };
 
+/**
+ * Get a named logger
+ * @param name The logger name
+ * @returns A logger instance
+ */
+export const getLogger = (name: string): winston.Logger => {
+  return logger.child({ name });
+};
+
 export default logger;

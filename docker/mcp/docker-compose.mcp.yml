@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # mcp-vault:
+  #   image: vault:latest
+  #   container_name: docgen-mcp-vault
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./secrets:/vault/secrets:ro
+  #     - mcp-vault-data:/vault/data
+  #   environment:
+  #     VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN}
+  #   cap_drop:
+  #     - ALL
+  #   cap_add:
+  #     - NET_BIND_SERVICE
+  #   networks:
+  #     - mcp-backend
+  #   healthcheck:
+  #     test: ["CMD", "vault", "status"]
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
+      
+  mcp-github:
+    build:
+      context: ./servers/github
+      dockerfile: Dockerfile
+    container_name: docgen-mcp-github
+    restart: unless-stopped
+    ports:
+      - "${GITHUB_MCP_PORT_RANGE:-3000-3100}:3000"
+    volumes:
+      - ../../:/workspace:ro
+      - mcp-github-data:/app/data
+      - ./secrets/github_token.txt:/run/secrets/github_token:ro
+    env_file:
+      - ./.env.mcp
+    networks:
+      - mcp-frontend
+      - mcp-backend
+    deploy:
+      resources:
+        limits:
+          cpus: '${MCP_CPU_LIMIT:-0.5}'
+          memory: '${MCP_MEMORY_LIMIT:-1g}'
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      
+  mcp-main:
+    build:
+      context: ./servers/main
+      dockerfile: Dockerfile
+    container_name: docgen-mcp-main
+    restart: unless-stopped
+    ports:
+      - "${MAIN_MCP_PORT_RANGE:-3200-3300}:3200"
+      - "${MAIN_MCP_HEALTH_PORT_RANGE:-8800-8900}:8800"
+    volumes:
+      - ../../:/workspace:ro
+      - mcp-main-data:/app/data
+      - ./secrets/anthropic_key.txt:/run/secrets/anthropic_key:ro
+    env_file:
+      - ./.env.mcp
+    networks:
+      - mcp-frontend
+      - mcp-backend
+    deploy:
+      resources:
+        limits:
+          cpus: '${MCP_CPU_LIMIT:-1.0}'
+          memory: '${MCP_MEMORY_LIMIT:-2g}'
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8800/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # mcp-orchestrator:
+  #   image: mcp/orchestrator:latest
+  #   container_name: docgen-mcp-orchestrator
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./config:/etc/mcp:ro
+  #   networks:
+  #     - mcp-frontend
+  #     - mcp-backend
+  #   depends_on:
+  #     - mcp-github
+  #     - mcp-main
+  #   configs:
+  #     - source: mcp-routing
+  #       target: /etc/mcp/routing.yaml
+  #   healthcheck:
+  #     test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/health", "||", "exit", "1"]
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
+
+networks:
+  mcp-frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.5.0/24
+  mcp-backend:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.28.6.0/24
+
+volumes:
+  mcp-github-data:
+  mcp-main-data:
+
+configs:
+  mcp-routing:
+    file: ./config/routing.yaml

@@ -1,0 +1,26 @@
+{
+  "name": "github-mcp-server",
+  "version": "1.0.0",
+  "description": "GitHub integration MCP server for DocGen",
+  "capabilities": [
+    "github_repository_access",
+    "github_issue_tracking",
+    "github_pull_requests"
+  ],
+  "endpoints": {
+    "main": "/mcp",
+    "health": "/health"
+  },
+  "requirements": {
+    "secrets": ["github_token"],
+    "volumes": ["workspace", "data"]
+  },
+  "security": {
+    "authentication": true,
+    "read_only_filesystem": true
+  },
+  "resources": {
+    "cpu": "0.5",
+    "memory": "1g"
+  }
+}

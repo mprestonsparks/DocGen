@@ -1,0 +1,49 @@
+# MCP Server Routing Configuration
+# This file configures how the MCP orchestrator routes requests to different MCP servers
+
+orchestrator:
+  host: 0.0.0.0
+  port: 8080
+  log_level: info
+
+servers:
+  github:
+    url: http://mcp-github:3000
+    capabilities:
+      - github_repository_access
+      - github_issue_tracking
+      - github_pull_requests
+    priority: 10
+    max_connections: 20
+    timeout_seconds: 30
+    
+  main:
+    url: http://mcp-main:3200
+    capabilities:
+      - document_generation
+      - code_completion
+      - semantic_analysis
+      - natural_language_processing
+    priority: 5  # Lower number means higher priority
+    max_connections: 30
+    timeout_seconds: 120
+
+routing_rules:
+  - capability: github_repository_access
+    server: github
+    rate_limit: 100  # requests per minute
+    
+  - capability: document_generation
+    server: main
+    rate_limit: 200
+
+security:
+  require_authentication: true
+  token_validation: true
+  allowed_origins:
+    - http://localhost:*
+    - https://*.docgen.local
+  rate_limiting:
+    enabled: true
+    default_limit: 100  # requests per minute
+    ip_based: true

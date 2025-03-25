@@ -1,0 +1,27 @@
+{
+  "name": "main-mcp-server",
+  "version": "1.0.0",
+  "description": "Main MCP server for DocGen with document generation capabilities",
+  "capabilities": [
+    "document_generation",
+    "code_completion",
+    "semantic_analysis",
+    "natural_language_processing"
+  ],
+  "endpoints": {
+    "main": "/mcp",
+    "health": "/health"
+  },
+  "requirements": {
+    "secrets": ["anthropic_key"],
+    "volumes": ["workspace", "data"]
+  },
+  "security": {
+    "authentication": true,
+    "read_only_filesystem": true
+  },
+  "resources": {
+    "cpu": "1.0",
+    "memory": "2g"
+  }
+}

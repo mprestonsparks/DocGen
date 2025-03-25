@@ -90,3 +90,11 @@ $RECYCLE.BIN/
 # Cache files
 .npm
 .eslintcache
+
+# MCP Server secrets
+docker/mcp/secrets/*.txt
+docker/mcp/secrets/*.key
+docker/mcp/.env.mcp
+
+# MCP Server data
+docker/mcp/servers/*/data/

@@ -1,6 +1,6 @@
 /**
- * Main MCP Server for DocGen
- * Provides document generation and language processing capabilities through the Model Context Protocol
+ * MCP Orchestrator for DocGen
+ * Coordinates multiple MCP servers and provides a unified API
  */
 
 import express from 'express';
@@ -10,7 +10,7 @@ import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { healthRouter } from './routes/health';
 import { mcpRouter } from './routes/mcp';
-import { setupAnthropicClient } from './services/anthropic';
+import { loadServerConfiguration } from './services/config';
 import { authenticateApiKey, rateLimit, initializeApiKeys } from './middleware/auth';
 
 // Load environment variables
@@ -18,17 +18,12 @@ dotenv.config();
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 3200;
-const HEALTH_PORT = process.env.HEALTH_PORT || 8800;
-
-// Create separate app for health checks
-const healthApp = express();
+const PORT = process.env.PORT || 8080;
 
 // Middleware
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
-healthApp.use(cors());
+app.use(express.json({ limit: '10mb' }));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -36,32 +31,31 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize API keys
+// Initialize API keys and server configuration
 initializeApiKeys();
+loadServerConfiguration();
 
 // Apply authentication and rate limiting middleware to MCP routes
 app.use('/mcp', authenticateApiKey, rateLimit, mcpRouter);
 
 // Health routes are not protected
-healthApp.use('/health', healthRouter);
+app.use('/health', healthRouter);
 
-// Initialize Anthropic client
-setupAnthropicClient();
-
-// Start servers
+// Start server
 app.listen(PORT, () => {
-  logger.info(`Main MCP Server running on port ${PORT}`);
+  logger.info(`MCP Orchestrator running on port ${PORT}`);
   logger.info('Environment: ' + (process.env.NODE_ENV || 'development'));
+  logger.info('Health endpoint: http://localhost:' + PORT + '/health');
   logger.info('MCP endpoint: http://localhost:' + PORT + '/mcp');
-});
-
-healthApp.listen(HEALTH_PORT, () => {
-  logger.info(`Health server running on port ${HEALTH_PORT}`);
-  logger.info('Health endpoint: http://localhost:' + HEALTH_PORT + '/health');
 });
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, shutting down gracefully');
   process.exit(0);
 });

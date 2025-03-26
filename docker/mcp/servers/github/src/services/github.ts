@@ -250,3 +250,219 @@ export const createIssue = async (
     throw error;
   }
 };
+
+/**
+ * Create a pull request in a repository
+ */
+export const createPullRequest = async (
+  owner: string,
+  repo: string,
+  title: string,
+  body: string,
+  head: string,
+  base: string,
+  draft: boolean = false
+): Promise<PullRequest> => {
+  try {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+    
+    if (!owner || !repo || !title || !head || !base) {
+      throw new Error('Owner, repo, title, head, and base parameters are required');
+    }
+    
+    const response = await octokit.rest.pulls.create({
+      owner,
+      repo,
+      title,
+      body,
+      head,
+      base,
+      draft
+    });
+    
+    return {
+      id: response.data.id,
+      number: response.data.number,
+      title: response.data.title,
+      body: response.data.body || null,
+      state: response.data.state,
+      url: response.data.html_url,
+      createdAt: response.data.created_at,
+      updatedAt: response.data.updated_at,
+      closedAt: response.data.closed_at,
+      mergedAt: response.data.merged_at,
+      draft: response.data.draft || false,
+      mergeable: response.data.mergeable || null,
+      baseBranch: response.data.base.ref,
+      headBranch: response.data.head.ref
+    };
+  } catch (error) {
+    logError(`Failed to create pull request in ${owner}/${repo}`, error as Error);
+    throw error;
+  }
+};
+
+/**
+ * Get a specific pull request
+ */
+export const getPullRequest = async (
+  owner: string,
+  repo: string,
+  pullNumber: number
+): Promise<PullRequest> => {
+  try {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+    
+    if (!owner || !repo || !pullNumber) {
+      throw new Error('Owner, repo, and pullNumber parameters are required');
+    }
+    
+    const response = await octokit.rest.pulls.get({
+      owner,
+      repo,
+      pull_number: pullNumber
+    });
+    
+    return {
+      id: response.data.id,
+      number: response.data.number,
+      title: response.data.title,
+      body: response.data.body || null,
+      state: response.data.state,
+      url: response.data.html_url,
+      createdAt: response.data.created_at,
+      updatedAt: response.data.updated_at,
+      closedAt: response.data.closed_at,
+      mergedAt: response.data.merged_at,
+      draft: response.data.draft || false,
+      mergeable: response.data.mergeable || null,
+      baseBranch: response.data.base.ref,
+      headBranch: response.data.head.ref
+    };
+  } catch (error) {
+    logError(`Failed to get pull request ${pullNumber} in ${owner}/${repo}`, error as Error);
+    throw error;
+  }
+};
+
+/**
+ * Merge a pull request
+ */
+export const mergePullRequest = async (
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  commitTitle?: string,
+  commitMessage?: string,
+  mergeMethod: 'merge' | 'squash' | 'rebase' = 'merge'
+): Promise<{ merged: boolean, message: string }> => {
+  try {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+    
+    if (!owner || !repo || !pullNumber) {
+      throw new Error('Owner, repo, and pullNumber parameters are required');
+    }
+    
+    const response = await octokit.rest.pulls.merge({
+      owner,
+      repo,
+      pull_number: pullNumber,
+      commit_title: commitTitle,
+      commit_message: commitMessage,
+      merge_method: mergeMethod
+    });
+    
+    return {
+      merged: response.data.merged,
+      message: response.data.message
+    };
+  } catch (error) {
+    logError(`Failed to merge pull request ${pullNumber} in ${owner}/${repo}`, error as Error);
+    throw error;
+  }
+};
+
+/**
+ * Get pull request reviews
+ */
+export const getPullRequestReviews = async (
+  owner: string,
+  repo: string,
+  pullNumber: number
+): Promise<Array<{
+  id: number,
+  user: string,
+  state: string,
+  body: string | null,
+  submittedAt: string
+}>> => {
+  try {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+    
+    if (!owner || !repo || !pullNumber) {
+      throw new Error('Owner, repo, and pullNumber parameters are required');
+    }
+    
+    const response = await octokit.rest.pulls.listReviews({
+      owner,
+      repo,
+      pull_number: pullNumber
+    });
+    
+    return response.data.map(review => ({
+      id: review.id,
+      user: review.user?.login || 'unknown',
+      state: review.state,
+      body: review.body || null,
+      submittedAt: review.submitted_at || new Date().toISOString()
+    }));
+  } catch (error) {
+    logError(`Failed to get reviews for pull request ${pullNumber} in ${owner}/${repo}`, error as Error);
+    throw error;
+  }
+};
+
+/**
+ * Create a review for a pull request
+ */
+export const createPullRequestReview = async (
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  body: string,
+  event: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT' = 'COMMENT'
+): Promise<{ id: number, state: string }> => {
+  try {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+    
+    if (!owner || !repo || !pullNumber) {
+      throw new Error('Owner, repo, and pullNumber parameters are required');
+    }
+    
+    const response = await octokit.rest.pulls.createReview({
+      owner,
+      repo,
+      pull_number: pullNumber,
+      body,
+      event
+    });
+    
+    return {
+      id: response.data.id,
+      state: response.data.state
+    };
+  } catch (error) {
+    logError(`Failed to create review for pull request ${pullNumber} in ${owner}/${repo}`, error as Error);
+    throw error;
+  }
+};

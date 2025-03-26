@@ -7,6 +7,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { logger, logError } from '../utils/logger';
+import { EventEmitter } from 'events';
 
 // Type definitions for Anthropic API
 export interface AnthropicClientStatus {
@@ -22,6 +23,7 @@ export interface DocumentGenerationRequest {
   temperature?: number;
   topP?: number;
   stopSequences?: string[];
+  stream?: boolean;
 }
 
 export interface DocumentGenerationResponse {
@@ -35,11 +37,23 @@ export interface DocumentGenerationResponse {
   };
 }
 
+export interface DocumentGenerationStreamResponse extends EventEmitter {
+  id: string;
+  model: string;
+}
+
+export interface StreamChunk {
+  id: string;
+  content: string;
+  isDone: boolean;
+}
+
 export interface CodeCompletionRequest {
   code: string;
   language: string;
   maxTokens?: number;
   temperature?: number;
+  stream?: boolean;
 }
 
 export interface CodeCompletionResponse {
@@ -179,6 +193,76 @@ export const generateDocument = async (
     logError('Document generation failed', error as Error);
     throw error;
   }
+};
+
+/**
+ * Generate document with streaming response
+ */
+export const generateDocumentStream = (
+  request: DocumentGenerationRequest
+): DocumentGenerationStreamResponse => {
+  const streamEmitter = new EventEmitter() as DocumentGenerationStreamResponse;
+  const streamId = uuidv4();
+  
+  streamEmitter.id = streamId;
+  streamEmitter.model = 'claude-2.1';
+  
+  // Process in the background
+  (async () => {
+    try {
+      if (!anthropic) {
+        throw new Error('Anthropic client not initialized');
+      }
+      
+      const stream = await anthropic.completions.create({
+        model: 'claude-2.1',
+        max_tokens_to_sample: request.maxTokens || 4000,
+        temperature: request.temperature || 0.7,
+        prompt: `\n\nHuman: ${request.prompt}\n\nAssistant: `,
+        stop_sequences: request.stopSequences || ["\n\nHuman:"],
+        stream: true,
+      });
+      
+      let contentSoFar = '';
+      
+      for await (const completion of stream) {
+        contentSoFar += completion.completion;
+        
+        const chunk: StreamChunk = {
+          id: streamId,
+          content: completion.completion,
+          isDone: false
+        };
+        
+        streamEmitter.emit('chunk', chunk);
+      }
+      
+      // Emit the final chunk with isDone flag
+      streamEmitter.emit('chunk', {
+        id: streamId,
+        content: '',
+        isDone: true
+      });
+      
+      // Emit the complete event with the full response
+      streamEmitter.emit('complete', {
+        id: streamId,
+        content: contentSoFar,
+        model: 'claude-2.1',
+        finishReason: 'stop',
+        usage: {
+          inputTokens: 0,
+          outputTokens: 0
+        }
+      });
+      
+    } catch (error) {
+      logError('Document generation stream failed', error as Error);
+      streamEmitter.emit('error', error);
+    }
+  })();
+  
+  return streamEmitter;
 };
 
 /**

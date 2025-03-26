@@ -24,6 +24,7 @@ servers:
       - code_completion
       - semantic_analysis
       - natural_language_processing
+      - filesystem_access
     priority: 5  # Lower number means higher priority
     max_connections: 30
     timeout_seconds: 120
@@ -33,9 +34,33 @@ routing_rules:
     server: github
     rate_limit: 100  # requests per minute
     
+  - capability: github_issue_tracking
+    server: github
+    rate_limit: 100
+    
+  - capability: github_pull_requests
+    server: github
+    rate_limit: 100
+    
   - capability: document_generation
     server: main
     rate_limit: 200
+    
+  - capability: code_completion
+    server: main
+    rate_limit: 200
+    
+  - capability: semantic_analysis
+    server: main
+    rate_limit: 150
+    
+  - capability: natural_language_processing
+    server: main
+    rate_limit: 150
+    
+  - capability: filesystem_access
+    server: main
+    rate_limit: 300
 
 security:
   require_authentication: true

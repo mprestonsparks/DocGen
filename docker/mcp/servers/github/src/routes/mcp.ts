@@ -8,7 +8,12 @@ import {
   getRepositoryInfo, 
   listIssues, 
   getPullRequests,
-  createIssue
+  createIssue,
+  createPullRequest,
+  getPullRequest,
+  mergePullRequest,
+  getPullRequestReviews,
+  createPullRequestReview
 } from '../services/github';
 
 export const mcpRouter = Router();
@@ -61,6 +66,55 @@ mcpRouter.post('/', async (req: Request, res: Response) => {
         );
         break;
         
+      case 'github.pullRequests.create':
+        result = await createPullRequest(
+          params?.owner,
+          params?.repo,
+          params?.title,
+          params?.body,
+          params?.head,
+          params?.base,
+          params?.draft
+        );
+        break;
+        
+      case 'github.pullRequests.get':
+        result = await getPullRequest(
+          params?.owner,
+          params?.repo,
+          params?.pullNumber
+        );
+        break;
+        
+      case 'github.pullRequests.merge':
+        result = await mergePullRequest(
+          params?.owner,
+          params?.repo,
+          params?.pullNumber,
+          params?.commitTitle,
+          params?.commitMessage,
+          params?.mergeMethod
+        );
+        break;
+        
+      case 'github.pullRequests.getReviews':
+        result = await getPullRequestReviews(
+          params?.owner,
+          params?.repo,
+          params?.pullNumber
+        );
+        break;
+        
+      case 'github.pullRequests.createReview':
+        result = await createPullRequestReview(
+          params?.owner,
+          params?.repo,
+          params?.pullNumber,
+          params?.body,
+          params?.event
+        );
+        break;
+        
       default:
         return res.status(400).json({
           jsonrpc: '2.0',
@@ -110,8 +164,15 @@ mcpRouter.get('/capabilities', (req: Request, res: Response) => {
       methods: ['github.issues.list', 'github.issues.create']
     },
     github_pull_requests: {
-      version: '1.0',
-      methods: ['github.pullRequests.list']
+      version: '1.1',
+      methods: [
+        'github.pullRequests.list',
+        'github.pullRequests.get',
+        'github.pullRequests.create',
+        'github.pullRequests.merge',
+        'github.pullRequests.getReviews',
+        'github.pullRequests.createReview'
+      ]
     }
   };
   

@@ -1,6 +1,10 @@
 version: '3.8'
 
 services:
+  # For development purposes, we've simplified the setup by commenting out
+  # the vault and orchestrator services and using direct file mounts for secrets
+  # instead of Docker secrets
+  
   # mcp-vault:
   #   image: vault:latest
   #   container_name: docgen-mcp-vault
@@ -33,7 +37,7 @@ services:
     volumes:
       - ../../:/workspace:ro
       - mcp-github-data:/app/data
-      - ./secrets/github_token.txt:/run/secrets/github_token:ro
+      - ../secrets/github_token.txt:/run/secrets/github_token:ro
     env_file:
       - ./.env.mcp
     networks:
@@ -45,7 +49,7 @@ services:
           cpus: '${MCP_CPU_LIMIT:-0.5}'
           memory: '${MCP_MEMORY_LIMIT:-1g}'
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/health", "||", "exit", "1"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -62,7 +66,8 @@ services:
     volumes:
       - ../../:/workspace:ro
       - mcp-main-data:/app/data
-      - ./secrets/anthropic_key.txt:/run/secrets/anthropic_key:ro
+      - ../secrets/anthropic_key.txt:/run/secrets/anthropic_key:ro
+      - ../secrets/mcp_api_keys.txt:/run/secrets/mcp_api_keys:ro
     env_file:
       - ./.env.mcp
     networks:
@@ -74,48 +79,64 @@ services:
           cpus: '${MCP_CPU_LIMIT:-1.0}'
           memory: '${MCP_MEMORY_LIMIT:-2g}'
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8800/health", "||", "exit", "1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  # mcp-orchestrator:
-  #   image: mcp/orchestrator:latest
-  #   container_name: docgen-mcp-orchestrator
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ./config:/etc/mcp:ro
-  #   networks:
-  #     - mcp-frontend
-  #     - mcp-backend
-  #   depends_on:
-  #     - mcp-github
-  #     - mcp-main
-  #   configs:
-  #     - source: mcp-routing
-  #       target: /etc/mcp/routing.yaml
-  #   healthcheck:
-  #     test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/health", "||", "exit", "1"]
-  #     interval: 30s
-  #     timeout: 5s
-  #     retries: 3
+  mcp-orchestrator:
+    build:
+      context: ./servers/orchestrator
+      dockerfile: Dockerfile
+    container_name: docgen-mcp-orchestrator
+    restart: unless-stopped
+    ports:
+      - "${ORCHESTRATOR_PORT_RANGE:-8080-8180}:8080"
+    volumes:
+      - ./config:/etc/mcp:ro
+      - ../secrets/mcp_api_keys.txt:/run/secrets/mcp_api_keys:ro
+    env_file:
+      - ./.env.mcp
+    environment:
+      - GITHUB_MCP_URL=http://mcp-github:3000
+      - MAIN_MCP_URL=http://mcp-main:3200
+    networks:
+      - mcp-frontend
+      - mcp-backend
+    depends_on:
+      - mcp-github
+      - mcp-main
+    deploy:
+      resources:
+        limits:
+          cpus: '${MCP_CPU_LIMIT:-0.5}'
+          memory: '${MCP_MEMORY_LIMIT:-1g}'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 networks:
   mcp-frontend:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.28.5.0/24
   mcp-backend:
-    internal: true
-    ipam:
-      config:
-        - subnet: 172.28.6.0/24
+    driver: bridge
 
 volumes:
+  # mcp-vault-data:
   mcp-github-data:
   mcp-main-data:
 
-configs:
-  mcp-routing:
-    file: ./config/routing.yaml
+# Using direct file mounts instead of Docker secrets for development simplicity
+# secrets:
+#   github_api_token:
+#     file: ./secrets/github_token.txt
+#   anthropic_api_key:
+#     file: ./secrets/anthropic_key.txt
+#   codeium_api_key:
+#     file: ./secrets/codeium_key.txt
+
+# configs:
+#   mcp-routing:
+#     file: ./config/routing.yaml

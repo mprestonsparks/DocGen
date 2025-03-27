@@ -2,8 +2,8 @@
 
 This implementation plan outlines the strategy for integrating Model Context Protocol (MCP) servers into the DocGen project using Docker, based on DeepResearch findings and official MCP specifications.
 
-> **IMPLEMENTATION STATUS (Updated 2025-03-26T15:22:45-05:00):**  
-> Phase 1 and Phase 2 have been completed. MCP servers are now running with proper Docker configuration, secure credential management, dynamic port allocation, streaming responses, file system access, advanced GitHub integration, authentication with rate limiting, and multi-server orchestration. The infrastructure is ready for further development in Phase 3, with focus areas identified for strengthening the implementation before adding advanced capabilities.
+> **IMPLEMENTATION STATUS (Updated 2025-03-27T16:00:00-05:00):**  
+> Phase 1 and Phase 2 have been completed. MCP servers are now running with proper Docker configuration, environment variable-based credential management, dynamic port allocation, streaming responses, file system access, advanced GitHub integration, authentication with rate limiting, and multi-server orchestration. The infrastructure is ready for further development in Phase 3, with focus areas identified for strengthening the implementation before adding advanced capabilities.
 
 ## 1. Architectural Foundation
 
@@ -69,30 +69,9 @@ version: '3.8'
 
 services:
   # For development purposes, we've simplified the setup by commenting out
-  # the vault service and using direct file mounts for secrets
+  # the vault service and using environment variables for API keys
   # instead of Docker secrets
   
-  # mcp-vault:
-  #   image: vault:latest
-  #   container_name: docgen-mcp-vault
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ./secrets:/vault/secrets:ro
-  #     - mcp-vault-data:/vault/data
-  #   environment:
-  #     VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN}
-  #   cap_drop:
-  #     - ALL
-  #   cap_add:
-  #     - NET_BIND_SERVICE
-  #   networks:
-  #     - mcp-backend
-  #   healthcheck:
-  #     test: ["CMD", "vault", "status"]
-  #     interval: 30s
-  #     timeout: 5s
-  #     retries: 3
-      
   mcp-github:
     build:
       context: ./servers/github
@@ -104,7 +83,8 @@ services:
     volumes:
       - ../../:/workspace:ro
       - mcp-github-data:/app/data
-      - ../secrets/github_token.txt:/run/secrets/github_token:ro
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
     env_file:
       - ./.env.mcp
     networks:
@@ -116,7 +96,7 @@ services:
           cpus: '${MCP_CPU_LIMIT:-0.5}'
           memory: '${MCP_MEMORY_LIMIT:-1g}'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -133,8 +113,13 @@ services:
     volumes:
       - ../../:/workspace:ro
       - mcp-main-data:/app/data
-      - ../secrets/anthropic_key.txt:/run/secrets/anthropic_key:ro
-      - ../secrets/mcp_api_keys.txt:/run/secrets/mcp_api_keys:ro
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MCP_API_KEY=development_key
+      - MCP_API_KEYS=orchestrator:${GITHUB_TOKEN},github:${GITHUB_TOKEN}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_OWNER=${GITHUB_OWNER}
+      - GITHUB_REPO=${GITHUB_REPO}
     env_file:
       - ./.env.mcp
     networks:
@@ -146,7 +131,7 @@ services:
           cpus: '${MCP_CPU_LIMIT:-1.0}'
           memory: '${MCP_MEMORY_LIMIT:-2g}'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8800/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -161,12 +146,18 @@ services:
       - "${ORCHESTRATOR_PORT_RANGE:-8080-8180}:8080"
     volumes:
       - ./config:/etc/mcp:ro
-      - ../secrets/mcp_api_keys.txt:/run/secrets/mcp_api_keys:ro
-    env_file:
-      - ./.env.mcp
     environment:
+      - MCP_API_KEY=development_key
+      - MCP_API_KEYS=orchestrator:${GITHUB_TOKEN},github:${GITHUB_TOKEN}
       - GITHUB_MCP_URL=http://mcp-github:3000
       - MAIN_MCP_URL=http://mcp-main:3200
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GITHUB_OWNER=${GITHUB_OWNER}
+      - GITHUB_REPO=${GITHUB_REPO}
+      - MCP_CONFIG_PATH=/etc/mcp/routing.yaml
+    env_file:
+      - ./.env.mcp
     networks:
       - mcp-frontend
       - mcp-backend
@@ -179,7 +170,7 @@ services:
           cpus: '${MCP_CPU_LIMIT:-0.5}'
           memory: '${MCP_MEMORY_LIMIT:-1g}'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -191,13 +182,12 @@ networks:
     driver: bridge
 
 volumes:
-  # mcp-vault-data:
   mcp-github-data:
   mcp-main-data:
 ```
 
 > **IMPLEMENTATION NOTE:**  
-> For development simplicity, we've modified the Docker Compose configuration to use direct file mounts for secrets instead of Docker secrets. The vault service has been commented out for now and will be implemented in a future phase.
+> For development simplicity, we've modified the Docker Compose configuration to use environment variables for API keys instead of Docker secrets or direct file mounts. This approach simplifies deployment while maintaining security through proper environment variable management.
 
 ### 3.2 Environment Variables 
 
@@ -209,7 +199,8 @@ MCP_ENV=development
 MCP_LOG_LEVEL=info
 
 # Security Configuration
-VAULT_TOKEN=your_vault_token_here
+GITHUB_TOKEN=your_github_token_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
 # Dynamic Port Ranges (each server will use one port from its range)
 GITHUB_MCP_PORT_RANGE=3000-3100
@@ -264,93 +255,85 @@ Developed the MCP orchestrator service to coordinate multiple MCP servers and pr
 
 ## 5. Next Steps (Phase 3)
 
-Phase 3 of the implementation plan will focus on the following areas:
+With Phases 1 and 2 successfully completed, Phase 3 will focus on implementing the specific MCP capabilities needed to support Windsurf's built-in Cascade AI in executing the "get-to-work" workflow (testing, issues, and TODOs).
 
-### 5.1 Comprehensive Testing
-- Implement unit tests for all MCP server components
-  - Create test suites for each service (GitHub, Main, Orchestrator)
-  - Implement mock-based tests for external dependencies
-  - Add integration tests for cross-service functionality
-- Develop integration tests for the entire MCP infrastructure
-  - Test end-to-end workflows across multiple services
-  - Verify error handling and recovery mechanisms
-- Create load testing scenarios to ensure scalability
-  - Simulate multiple concurrent clients
-  - Test rate limiting effectiveness under load
-  - Measure performance degradation under stress
+> **IMPLEMENTATION PRIORITY:**  
+> Phase 3 has been streamlined to focus exclusively on implementing the MCP server capabilities required by Windsurf's Cascade AI to automate the "get-to-work" workflow. These capabilities will be accessible to Windsurf through its native MCP integration.
 
-### 5.2 Production Hardening
-- Implement proper Docker secrets management with Vault
-  - Replace direct file mounts with Vault integration
-  - Set up secure secret rotation policies
-  - Implement least-privilege access controls
-- Enhance security with TLS encryption for all communications
-  - Generate and manage TLS certificates
-  - Implement mutual TLS for service-to-service communication
-  - Add certificate rotation procedures
-- Add comprehensive logging and monitoring
-  - Implement structured logging with correlation IDs
-  - Set up centralized log aggregation
-  - Create dashboards for key metrics and health indicators
-- Implement backup and recovery procedures
-  - Develop data backup strategies
-  - Create disaster recovery playbooks
-  - Test recovery scenarios regularly
+### 5.1 Core MCP Capabilities for "Get-to-Work" Workflow
 
-### 5.3 Advanced Capabilities
-- Add support for WebSocket connections for real-time updates
-  - Implement bidirectional communication channels
-  - Add support for server-sent events
-  - Create notification mechanisms for long-running processes
-- Implement batch processing for document generation
-  - Design queue-based processing system
-  - Add support for background job scheduling
-  - Implement progress tracking and reporting
-- Develop advanced document templating features
-  - Create template management system
-  - Add support for custom template variables
-  - Implement template versioning
-- Add support for additional AI models and services
-  - Integrate with multiple LLM providers
-  - Implement model selection and fallback strategies
-  - Add specialized models for specific document types
+#### Testing Phase Capabilities
+- **Test Discovery and Execution**
+  - Implement endpoints for discovering available tests across the codebase
+  - Add support for test execution with filtering and parallelization options
+  - Create result parsers for extracting pass/fail status, execution time, and error details
+  
+- **Test Analysis**
+  - Implement test failure analysis to identify root causes
+  - Add test history tracking to detect flaky tests
+  - Create result aggregation for test runs across multiple test suites
 
-### 5.4 Client Integration
-- Create client libraries for easy integration with the MCP servers
-  - Develop TypeScript/JavaScript client library
-  - Add comprehensive error handling
-  - Implement automatic retries and circuit breaking
-- Develop example applications demonstrating MCP server usage
-  - Create sample web application
-  - Build CLI tool for document generation
-  - Implement VS Code extension for developer workflow
-- Create comprehensive documentation for client developers
-  - Write detailed API reference
-  - Create getting started guides
-  - Add tutorials for common use cases
+#### Issues Phase Capabilities
+- **GitHub Issue Management**
+  - Implement comprehensive GitHub issue listing with filtering by labels, assignees, and status
+  - Add issue dependency detection and relationship mapping functionality
+  - Create endpoints for issue updates, comments, assignment, and label management
+  
+- **Issue Prioritization**
+  - Implement algorithms for intelligent issue prioritization based on dependencies
+  - Add support for analyzing issue relationships and blockers
+  - Create context extraction for understanding issue relevance to codebase
 
-### 5.5 Priority Areas Before Advanced Development
+#### TODOs Phase Capabilities
+- **TODO Discovery and Analysis**
+  - Implement codebase scanning for TODO comments across all files
+  - Add comment extraction and parsing for understanding priority and context
+  - Create metadata generation for TODO categorization
+  
+- **TODO-Issue Integration**
+  - Implement GitHub issue creation from TODO comments
+  - Add relationship tracking between TODOs and existing issues
+  - Create endpoints for updating or resolving TODOs in code
 
-Based on our implementation review, the following areas should be addressed before proceeding with advanced capabilities:
+### 5.2 Windsurf MCP Configuration
 
-1. **Strengthen Error Handling and Resilience**
-   - Implement comprehensive error handling in all services
-   - Add retry mechanisms for transient failures
-   - Develop circuit breakers to prevent cascading failures
+- **Windsurf Integration**
+  - Create proper `~/.codeium/windsurf/mcp_config.json` configuration for our MCP servers
+  - Ensure MCP servers are correctly registered in the JSON schema that Windsurf expects
+  - Implement server registration compatible with Windsurf's UI-based server addition
+  
+- **Configuration Documentation**
+  - Create detailed documentation for configuring our MCP servers in Windsurf
+  - Include example `mcp_config.json` configurations for each server
+  - Provide instructions for both UI-based and direct JSON configuration approaches
 
-2. **Enhance Observability**
-   - Implement detailed request logging
-   - Add performance metrics collection
-   - Create health check endpoints with detailed status information
+- **Compatibility Considerations**
+  - Ensure our MCP servers only expose tool endpoints (not prompts or resources, which Windsurf doesn't support)
+  - Implement proper transport type (`stdio`) as required by Windsurf
+  - Optimize tool outputs to work within Windsurf's display capabilities (no image outputs)
 
-3. **Improve Security Posture**
-   - Conduct security audit of current implementation
-   - Address any identified vulnerabilities
-   - Implement additional security controls as needed
+### 5.3 Stability and Security
 
-4. **Expand Test Coverage**
-   - Develop unit tests for core functionality
-   - Create integration tests for critical paths
-   - Implement automated testing in CI/CD pipeline
+- **Authentication and Authorization**
+  - Finalize authentication for secure MCP server access
+  - Implement proper API key validation and rate limiting
+  - Add access controls for different operations
 
-> With Phase 2 now complete, the MCP infrastructure provides a solid foundation for advanced AI capabilities in the DocGen project. By addressing the priority areas identified above, we can ensure the system is robust, secure, and maintainable before proceeding with the advanced capabilities planned for Phase 3.
+- **Error Handling and Reliability**
+  - Implement comprehensive error reporting suitable for AI consumption
+  - Add graceful degradation for partial API failures
+  - Create detailed logging for troubleshooting
+
+- **Docker Refinements**
+  - Optimize Docker configurations for production use
+  - Ensure secure secret management in containers
+  - Implement health monitoring specific to MCP server needs
+
+### 5.4 Demonstration Script
+
+- Develop a simple Python script that demonstrates the "get-to-work" workflow
+- Create a command-line interface to execute the three workflow phases
+- Document usage as an alternative to direct Windsurf Cascade AI interaction
+
+> **IMPLEMENTATION NOTE:**  
+> By focusing on these specific capabilities, we will deliver MCP servers that integrate seamlessly with Windsurf's built-in Cascade AI, enabling it to automate the "get-to-work" workflow without requiring additional IDE plugins or complex integration code. This approach aligns with our project's goal of enhancing AI capabilities while maintaining simplicity and focusing on our core objectives.

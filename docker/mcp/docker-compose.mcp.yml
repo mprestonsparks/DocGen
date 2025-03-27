@@ -37,7 +37,8 @@ services:
     volumes:
       - ../../:/workspace:ro
       - mcp-github-data:/app/data
-      - ../secrets/github_token.txt:/run/secrets/github_token:ro
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
     env_file:
       - ./.env.mcp
     networks:
@@ -49,7 +50,7 @@ services:
           cpus: '${MCP_CPU_LIMIT:-0.5}'
           memory: '${MCP_MEMORY_LIMIT:-1g}'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -66,8 +67,13 @@ services:
     volumes:
       - ../../:/workspace:ro
       - mcp-main-data:/app/data
-      - ../secrets/anthropic_key.txt:/run/secrets/anthropic_key:ro
-      - ../secrets/mcp_api_keys.txt:/run/secrets/mcp_api_keys:ro
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MCP_API_KEY=development_key
+      - MCP_API_KEYS=orchestrator:${GITHUB_TOKEN},github:${GITHUB_TOKEN}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_OWNER=${GITHUB_OWNER}
+      - GITHUB_REPO=${GITHUB_REPO}
     env_file:
       - ./.env.mcp
     networks:
@@ -79,7 +85,7 @@ services:
           cpus: '${MCP_CPU_LIMIT:-1.0}'
           memory: '${MCP_MEMORY_LIMIT:-2g}'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8800/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -94,12 +100,18 @@ services:
       - "${ORCHESTRATOR_PORT_RANGE:-8080-8180}:8080"
     volumes:
       - ./config:/etc/mcp:ro
-      - ../secrets/mcp_api_keys.txt:/run/secrets/mcp_api_keys:ro
-    env_file:
-      - ./.env.mcp
     environment:
+      - MCP_API_KEY=development_key
+      - MCP_API_KEYS=orchestrator:${GITHUB_TOKEN},github:${GITHUB_TOKEN}
       - GITHUB_MCP_URL=http://mcp-github:3000
       - MAIN_MCP_URL=http://mcp-main:3200
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GITHUB_OWNER=${GITHUB_OWNER}
+      - GITHUB_REPO=${GITHUB_REPO}
+      - MCP_CONFIG_PATH=/etc/mcp/routing.yaml
+    env_file:
+      - ./.env.mcp
     networks:
       - mcp-frontend
       - mcp-backend
@@ -112,7 +124,7 @@ services:
           cpus: '${MCP_CPU_LIMIT:-0.5}'
           memory: '${MCP_MEMORY_LIMIT:-1g}'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3

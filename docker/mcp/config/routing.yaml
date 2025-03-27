@@ -1,74 +1,101 @@
 # MCP Server Routing Configuration
 # This file configures how the MCP orchestrator routes requests to different MCP servers
 
-orchestrator:
-  host: 0.0.0.0
-  port: 8080
-  log_level: info
-
 servers:
-  github:
-    url: http://mcp-github:3000
-    capabilities:
-      - github_repository_access
-      - github_issue_tracking
-      - github_pull_requests
-    priority: 10
-    max_connections: 20
-    timeout_seconds: 30
-    
-  main:
+  - id: main
+    name: Main MCP Server
     url: http://mcp-main:3200
+    type: main
+    priority: 1
     capabilities:
-      - document_generation
-      - code_completion
-      - semantic_analysis
-      - natural_language_processing
-      - filesystem_access
-    priority: 5  # Lower number means higher priority
-    max_connections: 30
-    timeout_seconds: 120
+      - document.generate
+      - document.generate.stream
+      - code.complete
+      - semantic.analyze
+      - nlp.process
+      - fs.readFile
+      - fs.writeFile
+      - fs.listFiles
+      - fs.deleteFile
+      - test.discover
+      - test.run
+      - test.analyze
+      - test.history
+      - test.flaky
+      - todo.scan
+      - todo.categorize
+      - todo.findRelated
+      - todo.update
+  - id: github
+    name: GitHub MCP Server
+    url: http://mcp-github:3000
+    type: github
+    priority: 2
+    capabilities:
+      - github.repository.info
+      - github.issues.list
+      - github.issues.create
+      - github.issues.analyzeDependencies
+      - github.issues.prioritize
+      - github.issues.createFromTODOs
+      - github.issues.updateStatus
+      - github.issues.addComment
+      - github.pullRequests.list
+      - github.pullRequests.get
+      - github.pullRequests.create
+      - github.pullRequests.merge
+      - github.pullRequests.getReviews
+      - github.pullRequests.createReview
 
-routing_rules:
-  - capability: github_repository_access
-    server: github
-    rate_limit: 100  # requests per minute
-    
-  - capability: github_issue_tracking
-    server: github
-    rate_limit: 100
-    
-  - capability: github_pull_requests
-    server: github
-    rate_limit: 100
-    
-  - capability: document_generation
-    server: main
-    rate_limit: 200
-    
-  - capability: code_completion
-    server: main
-    rate_limit: 200
-    
-  - capability: semantic_analysis
-    server: main
-    rate_limit: 150
-    
-  - capability: natural_language_processing
-    server: main
-    rate_limit: 150
-    
-  - capability: filesystem_access
-    server: main
-    rate_limit: 300
-
-security:
-  require_authentication: true
-  token_validation: true
-  allowed_origins:
-    - http://localhost:*
-    - https://*.docgen.local
-  rate_limiting:
-    enabled: true
-    default_limit: 100  # requests per minute
-    ip_based: true
+routes:
+  # Document generation routes
+  document.generate: { server: main }
+  document.generate.stream: { server: main }
+  code.complete: { server: main }
+  semantic.analyze: { server: main }
+  nlp.process: { server: main }
+  
+  # File system routes
+  fs.readFile: { server: main }
+  fs.writeFile: { server: main }
+  fs.listFiles: { server: main }
+  fs.deleteFile: { server: main }
+  
+  # GitHub routes
+  github.repository.info: { server: github }
+  github.issues.list: { server: github }
+  github.issues.create: { server: github }
+  github.pullRequests.list: { server: github }
+  github.pullRequests.get: { server: github }
+  github.pullRequests.create: { server: github }
+  github.pullRequests.merge: { server: github }
+  github.pullRequests.getReviews: { server: github }
+  github.pullRequests.createReview: { server: github }
+  
+  # New GitHub issue management routes
+  github.issues.analyzeDependencies: { server: github }
+  github.issues.prioritize: { server: github }
+  github.issues.createFromTODOs: { server: github }
+  github.issues.updateStatus: { server: github }
+  github.issues.addComment: { server: github }
+  
+  # New testing routes
+  test.discover: { server: main }
+  test.run: { server: main }
+  test.analyze: { server: main }
+  test.history: { server: main }
+  test.flaky: { server: main }
+  
+  # New TODO management routes
+  todo.scan: { server: main }
+  todo.categorize: { server: main }
+  todo.findRelated: { server: main }
+  todo.update: { server: main }
+  
+  # Workflow routes
+  workflow.create: { server: main }
+  workflow.get: { server: main }
+  workflow.execute: { server: main }
+  workflow.testing.execute: { server: main }
+  workflow.issues.execute: { server: github }
+  workflow.todos.execute: { server: main }

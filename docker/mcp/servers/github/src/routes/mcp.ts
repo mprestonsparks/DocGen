@@ -13,7 +13,12 @@ import {
   getPullRequest,
   mergePullRequest,
   getPullRequestReviews,
-  createPullRequestReview
+  createPullRequestReview,
+  analyzeIssueDependencies,
+  prioritizeIssues,
+  createIssuesFromTODOs,
+  updateIssueStatus,
+  addIssueComment
 } from '../services/github';
 
 export const mcpRouter = Router();
@@ -115,6 +120,50 @@ mcpRouter.post('/', async (req: Request, res: Response) => {
         );
         break;
         
+      // New methods for get-to-work workflow
+      case 'github.issues.analyzeDependencies':
+        result = await analyzeIssueDependencies(
+          params?.owner,
+          params?.repo,
+          params?.issues
+        );
+        break;
+        
+      case 'github.issues.prioritize':
+        result = await prioritizeIssues(
+          params?.owner,
+          params?.repo,
+          params?.dependencies,
+          params?.issues
+        );
+        break;
+        
+      case 'github.issues.createFromTODOs':
+        result = await createIssuesFromTODOs(
+          params?.owner,
+          params?.repo,
+          params?.todos
+        );
+        break;
+        
+      case 'github.issues.updateStatus':
+        result = await updateIssueStatus(
+          params?.owner,
+          params?.repo,
+          params?.issueNumber,
+          params?.state
+        );
+        break;
+        
+      case 'github.issues.addComment':
+        result = await addIssueComment(
+          params?.owner,
+          params?.repo,
+          params?.issueNumber,
+          params?.body
+        );
+        break;
+        
       default:
         return res.status(400).json({
           jsonrpc: '2.0',
@@ -160,8 +209,16 @@ mcpRouter.get('/capabilities', (req: Request, res: Response) => {
       methods: ['github.repository.info']
     },
     github_issue_tracking: {
-      version: '1.0',
-      methods: ['github.issues.list', 'github.issues.create']
+      version: '1.1',
+      methods: [
+        'github.issues.list', 
+        'github.issues.create',
+        'github.issues.analyzeDependencies',
+        'github.issues.prioritize',
+        'github.issues.createFromTODOs',
+        'github.issues.updateStatus',
+        'github.issues.addComment'
+      ]
     },
     github_pull_requests: {
       version: '1.1',
@@ -172,6 +229,14 @@ mcpRouter.get('/capabilities', (req: Request, res: Response) => {
         'github.pullRequests.merge',
         'github.pullRequests.getReviews',
         'github.pullRequests.createReview'
+      ]
+    },
+    get_to_work_workflow: {
+      version: '1.0',
+      methods: [
+        'github.issues.analyzeDependencies',
+        'github.issues.prioritize',
+        'github.issues.createFromTODOs'
       ]
     }
   };

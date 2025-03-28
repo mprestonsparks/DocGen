@@ -466,3 +466,297 @@ export const createPullRequestReview = async (
     throw error;
   }
 };
+
+/**
+ * Analyze dependencies between issues
+ */
+export const analyzeIssueDependencies = async (
+  owner: string,
+  repo: string,
+  issues?: Issue[]
+): Promise<Record<number, number[]>> => {
+  try {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+    
+    if (!owner || !repo) {
+      throw new Error('Owner and repo parameters are required');
+    }
+    
+    // If issues are not provided, fetch them
+    const issueList = issues || await listIssues(owner, repo, 'open');
+    
+    // Create a map of issue numbers to dependencies
+    const dependencies: Record<number, number[]> = {};
+    
+    // Process each issue to find dependencies
+    for (const issue of issueList) {
+      dependencies[issue.number] = [];
+      
+      // Look for mentions of other issues in the body
+      if (issue.body) {
+        // Match patterns like #123 or "depends on #123" or "blocked by #123"
+        const regex = /#(\d+)/g;
+        const matches = [...issue.body.matchAll(regex)];
+        
+        for (const match of matches) {
+          const dependencyNumber = parseInt(match[1], 10);
+          
+          // Check if this is a valid issue number and not the same issue
+          if (
+            !isNaN(dependencyNumber) && 
+            dependencyNumber !== issue.number &&
+            issueList.some(i => i.number === dependencyNumber)
+          ) {
+            dependencies[issue.number].push(dependencyNumber);
+          }
+        }
+      }
+    }
+    
+    return dependencies;
+  } catch (error) {
+    logError(`Failed to analyze issue dependencies for ${owner}/${repo}`, error as Error);
+    throw error;
+  }
+};
+
+/**
+ * Prioritize issues based on dependencies
+ */
+export const prioritizeIssues = async (
+  owner: string,
+  repo: string,
+  dependencies?: Record<number, number[]>,
+  issues?: Issue[]
+): Promise<number[]> => {
+  try {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+    
+    if (!owner || !repo) {
+      throw new Error('Owner and repo parameters are required');
+    }
+    
+    // If issues are not provided, fetch them
+    const issueList = issues || await listIssues(owner, repo, 'open');
+    
+    // If dependencies are not provided, analyze them
+    const issueDependencies = dependencies || await analyzeIssueDependencies(owner, repo, issueList);
+    
+    // Create a map of issue numbers to their objects for easy lookup
+    const issueMap = new Map(issueList.map(issue => [issue.number, issue]));
+    
+    // Create a priority queue based on topological sort
+    const prioritized: number[] = [];
+    const visited = new Set<number>();
+    const visiting = new Set<number>();
+    
+    // Depth-first search to create topological sort
+    const visit = (issueNumber: number): void => {
+      if (visited.has(issueNumber)) return;
+      if (visiting.has(issueNumber)) {
+        // Circular dependency detected, break the cycle
+        logger.warn(`Circular dependency detected for issue #${issueNumber}`);
+        return;
+      }
+      
+      visiting.add(issueNumber);
+      
+      // Visit all dependencies first
+      const deps = issueDependencies[issueNumber] || [];
+      for (const dep of deps) {
+        visit(dep);
+      }
+      
+      visiting.delete(issueNumber);
+      visited.add(issueNumber);
+      prioritized.push(issueNumber);
+    };
+    
+    // Visit all issues
+    for (const issue of issueList) {
+      if (!visited.has(issue.number)) {
+        visit(issue.number);
+      }
+    }
+    
+    // Reverse the result to get the correct order (dependencies first)
+    return prioritized.reverse();
+  } catch (error) {
+    logError(`Failed to prioritize issues for ${owner}/${repo}`, error as Error);
+    throw error;
+  }
+};
+
+/**
+ * Create GitHub issues from TODO comments
+ */
+export const createIssuesFromTODOs = async (
+  owner: string,
+  repo: string,
+  todos: Array<{
+    file: string;
+    line: number;
+    text: string;
+    category?: string;
+  }>
+): Promise<Issue[]> => {
+  try {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+    
+    if (!owner || !repo) {
+      throw new Error('Owner and repo parameters are required');
+    }
+    
+    if (!todos || todos.length === 0) {
+      return [];
+    }
+    
+    // Group TODOs by category
+    const todosByCategory: Record<string, typeof todos> = {};
+    
+    for (const todo of todos) {
+      const category = todo.category || 'general';
+      if (!todosByCategory[category]) {
+        todosByCategory[category] = [];
+      }
+      todosByCategory[category].push(todo);
+    }
+    
+    // Create issues for each category
+    const createdIssues: Issue[] = [];
+    
+    for (const [category, categoryTodos] of Object.entries(todosByCategory)) {
+      // Skip if no TODOs in this category
+      if (categoryTodos.length === 0) continue;
+      
+      // Create issue title based on category
+      const title = `TODO: ${category.charAt(0).toUpperCase() + category.slice(1)} tasks`;
+      
+      // Create issue body with all TODOs in this category
+      const body = `
+## TODOs found in codebase (${categoryTodos.length})
+
+${categoryTodos.map(todo => (
+  `- [ ] ${todo.text.replace(/^TODO:?\s*/i, '')} (${todo.file}:${todo.line})`
+)).join('\n')}
+
+---
+*This issue was automatically generated from TODO comments in the codebase.*
+      `.trim();
+      
+      // Create the issue
+      const issue = await createIssue(
+        owner,
+        repo,
+        title,
+        body,
+        [category, 'todo']
+      );
+      
+      createdIssues.push(issue);
+    }
+    
+    return createdIssues;
+  } catch (error) {
+    logError(`Failed to create issues from TODOs for ${owner}/${repo}`, error as Error);
+    throw error;
+  }
+};
+
+/**
+ * Update issue status
+ */
+export const updateIssueStatus = async (
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  state: 'open' | 'closed'
+): Promise<Issue> => {
+  try {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+    
+    if (!owner || !repo) {
+      throw new Error('Owner and repo parameters are required');
+    }
+    
+    if (!issueNumber) {
+      throw new Error('Issue number is required');
+    }
+    
+    const response = await octokit.rest.issues.update({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      state
+    });
+    
+    return {
+      id: response.data.id,
+      number: response.data.number,
+      title: response.data.title,
+      body: response.data.body || null,
+      state: response.data.state,
+      url: response.data.html_url,
+      createdAt: response.data.created_at,
+      updatedAt: response.data.updated_at,
+      closedAt: response.data.closed_at,
+      labels: response.data.labels.map(label => 
+        typeof label === 'string' ? label : (label.name || '')
+      ).filter(Boolean) as string[]
+    };
+  } catch (error) {
+    logError(`Failed to update issue status for ${owner}/${repo}#${issueNumber}`, error as Error);
+    throw error;
+  }
+};
+
+/**
+ * Add comment to an issue
+ */
+export const addIssueComment = async (
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  body: string
+): Promise<{ id: number; url: string }> => {
+  try {
+    if (!octokit) {
+      throw new Error('GitHub client not initialized');
+    }
+    
+    if (!owner || !repo) {
+      throw new Error('Owner and repo parameters are required');
+    }
+    
+    if (!issueNumber) {
+      throw new Error('Issue number is required');
+    }
+    
+    if (!body) {
+      throw new Error('Comment body is required');
+    }
+    
+    const response = await octokit.rest.issues.createComment({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      body
+    });
+    
+    return {
+      id: response.data.id,
+      url: response.data.html_url
+    };
+  } catch (error) {
+    logError(`Failed to add comment to issue ${owner}/${repo}#${issueNumber}`, error as Error);
+    throw error;
+  }
+};

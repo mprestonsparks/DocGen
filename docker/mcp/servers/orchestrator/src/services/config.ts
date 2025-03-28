@@ -61,7 +61,18 @@ export const loadServerConfiguration = (): void => {
               'fs.readFile',
               'fs.writeFile',
               'fs.listFiles',
-              'fs.deleteFile'
+              'fs.deleteFile',
+              // New testing capabilities
+              'test.discover',
+              'test.run',
+              'test.analyze',
+              'test.history',
+              'test.flaky',
+              // New TODO capabilities
+              'todo.scan',
+              'todo.categorize',
+              'todo.findRelated',
+              'todo.update'
             ]
           },
           {
@@ -79,7 +90,13 @@ export const loadServerConfiguration = (): void => {
               'github.pullRequests.create',
               'github.pullRequests.merge',
               'github.pullRequests.getReviews',
-              'github.pullRequests.createReview'
+              'github.pullRequests.createReview',
+              // New issue management capabilities
+              'github.issues.analyzeDependencies',
+              'github.issues.prioritize',
+              'github.issues.createFromTODOs',
+              'github.issues.updateStatus',
+              'github.issues.addComment'
             ]
           }
         ],
@@ -106,7 +123,27 @@ export const loadServerConfiguration = (): void => {
           'github.pullRequests.create': { server: 'github' },
           'github.pullRequests.merge': { server: 'github' },
           'github.pullRequests.getReviews': { server: 'github' },
-          'github.pullRequests.createReview': { server: 'github' }
+          'github.pullRequests.createReview': { server: 'github' },
+          
+          // New GitHub issue management routes
+          'github.issues.analyzeDependencies': { server: 'github' },
+          'github.issues.prioritize': { server: 'github' },
+          'github.issues.createFromTODOs': { server: 'github' },
+          'github.issues.updateStatus': { server: 'github' },
+          'github.issues.addComment': { server: 'github' },
+          
+          // New testing routes
+          'test.discover': { server: 'main' },
+          'test.run': { server: 'main' },
+          'test.analyze': { server: 'main' },
+          'test.history': { server: 'main' },
+          'test.flaky': { server: 'main' },
+          
+          // New TODO management routes
+          'todo.scan': { server: 'main' },
+          'todo.categorize': { server: 'main' },
+          'todo.findRelated': { server: 'main' },
+          'todo.update': { server: 'main' }
         }
       };
       

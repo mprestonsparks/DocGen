@@ -108,6 +108,82 @@ npm test
 
 For detailed documentation, see the [docs](./docs) directory.
 
+## MCP System
+
+DocGen includes a Model Context Protocol (MCP) system that enables AI-assisted development through tools like Windsurf and Claude Code.
+
+### Overview
+
+The MCP system consists of:
+- Docker-based MCP servers that provide various capabilities
+- A TypeScript bridge for integration with Windsurf
+- Automated deployment and configuration scripts
+
+### Requirements
+
+- Docker and Docker Compose
+- Node.js and npm (for building the TypeScript bridge)
+- Python 3.6+ (for running deployment scripts)
+- Windsurf (for AI-assisted development)
+
+### Setup and Deployment
+
+1. **Environment Configuration**:
+   
+   Create a `.env` file in the project root with the following variables:
+   ```
+   GITHUB_TOKEN=your_github_token
+   GITHUB_OWNER=your_github_username
+   GITHUB_REPO=DocGen
+   ANTHROPIC_API_KEY=your_anthropic_api_key
+   ```
+
+2. **Deploy MCP Servers and Configure Windsurf**:
+   ```bash
+   python scripts/deploy_mcp.py
+   ```
+   This script:
+   - Builds and starts Docker containers for MCP servers
+   - Builds the TypeScript bridge for Windsurf integration
+   - Configures Windsurf to use the MCP servers
+
+3. **Restart Windsurf**:
+   
+   After deployment, restart Windsurf to apply the configuration changes.
+
+### Usage
+
+#### With Windsurf
+
+Once the MCP system is set up and Windsurf is restarted, you can use Cascade AI within Windsurf to:
+- Run tests and analyze results
+- Manage GitHub issues
+- Scan for TODOs in the codebase
+- Execute the full "get-to-work" workflow
+
+Simply ask Cascade AI to perform these tasks, and it will communicate with the MCP servers to execute them.
+
+#### With Command Line
+
+You can also use the command-line interface to interact with the MCP servers:
+
+```bash
+# Run the full get-to-work workflow
+python scripts/get_to_work.py
+
+# Run specific phases
+python scripts/get_to_work.py --phase testing
+python scripts/get_to_work.py --phase issues
+python scripts/get_to_work.py --phase todos
+```
+
+### Advanced Configuration
+
+For advanced configuration options, see:
+- [MCP Implementation Plan](./MCP_IMPLEMENTATION_PLAN.md) - Detailed architecture and implementation details
+- [MCP Bridge README](./src/mcp/bridge/README.md) - Information about the Windsurf integration bridge
+- [Scripts README](./scripts/README.md) - Documentation for deployment and workflow scripts
+
 ## Scripts
 
 - Scripts for development are organized in:

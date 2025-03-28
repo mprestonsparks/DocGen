@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  mcp-main:
+    build:
+      context: ./servers/main
+    image: docgen/mcp-main:latest
+    container_name: docgen-mcp-main
+    ports:
+      - "3200:3200"
+    environment:
+      - NODE_ENV=production
+      - PORT=3200
+      - LOG_LEVEL=info
+      - ENABLE_AI_ENHANCEMENT=${ENABLE_AI_ENHANCEMENT:-true}
+      - ENABLE_ADVANCED_VALIDATION=${ENABLE_ADVANCED_VALIDATION:-true}
+    volumes:
+      - ./logs:/app/logs
+    secrets:
+      - anthropic_api_key
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3200/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  mcp-github:
+    build:
+      context: ./servers/github
+    image: docgen/mcp-github:latest
+    container_name: docgen-mcp-github
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      - GITHUB_OWNER=${GITHUB_OWNER}
+      - GITHUB_REPO=${GITHUB_REPO}
+    volumes:
+      - ./logs:/app/logs
+    secrets:
+      - github_token
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  mcp-orchestrator:
+    build:
+      context: ./servers/orchestrator
+    image: docgen/mcp-orchestrator:latest
+    container_name: docgen-mcp-orchestrator
+    ports:
+      - "3500:3500"
+    environment:
+      - NODE_ENV=production
+      - PORT=3500
+      - LOG_LEVEL=info
+      - MAIN_MCP_URL=http://mcp-main:3200
+      - GITHUB_MCP_URL=http://mcp-github:3000
+    volumes:
+      - ./config:/etc/mcp
+      - ./logs:/app/logs
+    depends_on:
+      - mcp-main
+      - mcp-github
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3500/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+networks:
+  mcp-network:
+    driver: bridge
+
+secrets:
+  anthropic_api_key:
+    file: ./secrets/anthropic_api_key
+  github_token:
+    file: ./secrets/github_token

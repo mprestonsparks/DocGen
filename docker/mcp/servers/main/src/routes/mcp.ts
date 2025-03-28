@@ -18,6 +18,19 @@ import {
   listFiles,
   deleteFile
 } from '../services/filesystem';
+import {
+  discoverTests,
+  runTests,
+  analyzeTestFailures,
+  getTestHistory,
+  identifyFlakyTests
+} from '../services/testing';
+import {
+  scanTODOs,
+  categorizeTODOs,
+  findRelatedTODOs,
+  updateTODO
+} from '../services/todos';
 
 export const mcpRouter = Router();
 
@@ -116,6 +129,69 @@ mcpRouter.post('/', async (req: Request, res: Response) => {
         );
         break;
         
+      // Testing operations
+      case 'test.discover':
+        result = await discoverTests(
+          params?.directory,
+          params?.pattern
+        );
+        break;
+        
+      case 'test.run':
+        result = await runTests(
+          params?.tests,
+          params?.directory,
+          params?.parallel
+        );
+        break;
+        
+      case 'test.analyze':
+        result = await analyzeTestFailures(
+          params?.testResults
+        );
+        break;
+        
+      case 'test.history':
+        result = await getTestHistory(
+          params?.limit
+        );
+        break;
+        
+      case 'test.flaky':
+        result = await identifyFlakyTests(
+          params?.minRuns
+        );
+        break;
+        
+      // TODO operations
+      case 'todo.scan':
+        result = await scanTODOs(
+          params?.directory,
+          params?.includePatterns,
+          params?.excludePatterns
+        );
+        break;
+        
+      case 'todo.categorize':
+        result = await categorizeTODOs(
+          params?.todos
+        );
+        break;
+        
+      case 'todo.findRelated':
+        result = await findRelatedTODOs(
+          params?.todos
+        );
+        break;
+        
+      case 'todo.update':
+        result = await updateTODO(
+          params?.file,
+          params?.line,
+          params?.newText
+        );
+        break;
+        
       default:
         return res.status(400).json({
           jsonrpc: '2.0',
@@ -201,62 +277,57 @@ const handleStreamingDocumentGeneration = (req: Request, res: Response): void =>
       const chunkResponse = {
         jsonrpc: '2.0',
         method: 'document.generate.chunk',
-        params: chunk
+        params: {
+          id: stream.id,
+          chunk: chunk.text
+        }
       };
       
       res.write(`data: ${JSON.stringify(chunkResponse)}\n\n`);
+    });
+    
+    stream.on('end', () => {
+      const endResponse = {
+        jsonrpc: '2.0',
+        method: 'document.generate.end',
+        params: {
+          id: stream.id,
+          completed: true
+        }
+      };
       
-      // If this is the final chunk, end the response
-      if (chunk.isDone) {
-        res.end();
-      }
+      res.write(`data: ${JSON.stringify(endResponse)}\n\n`);
+      res.end();
     });
     
     stream.on('error', (error) => {
       const errorResponse = {
         jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: error instanceof Error ? error.message : 'Stream error'
-        },
-        id
+        method: 'document.generate.error',
+        params: {
+          id: stream.id,
+          error: error.message
+        }
       };
       
       res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
       res.end();
     });
     
-    // Handle client disconnect
-    req.on('close', () => {
-      stream.removeAllListeners();
-      logger.info(`Client disconnected from stream ${stream.id}`);
-    });
-    
   } catch (error) {
     logError('Streaming document generation failed', error as Error);
     
-    // Try to send an error response if we can
-    try {
-      res.status(500).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: error instanceof Error ? error.message : 'Internal server error'
-        },
-        id: req.body.id || null
-      });
-    } catch (e) {
-      // If we can't send a JSON response, try to send an SSE error
-      res.write(`data: ${JSON.stringify({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Internal server error'
-        },
-        id: req.body.id || null
-      })}\n\n`);
-      res.end();
-    }
+    const errorResponse = {
+      jsonrpc: '2.0',
+      error: {
+        code: -32000,
+        message: error instanceof Error ? error.message : 'Internal server error'
+      },
+      id: req.body.id || null
+    };
+    
+    res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
+    res.end();
   }
 };
 
@@ -267,24 +338,49 @@ const handleStreamingDocumentGeneration = (req: Request, res: Response): void =>
 mcpRouter.get('/capabilities', (req: Request, res: Response) => {
   const capabilities = {
     document_generation: {
-      version: '1.0',
+      version: '1.1',
       methods: ['document.generate', 'document.generate.stream']
     },
-    code_completion: {
+    code_assistance: {
       version: '1.0',
-      methods: ['code.complete']
-    },
-    semantic_analysis: {
-      version: '1.0',
-      methods: ['semantic.analyze']
+      methods: ['code.complete', 'semantic.analyze']
     },
     natural_language_processing: {
       version: '1.0',
       methods: ['nlp.process']
     },
-    filesystem_access: {
+    file_system_access: {
       version: '1.0',
       methods: ['fs.readFile', 'fs.writeFile', 'fs.listFiles', 'fs.deleteFile']
+    },
+    testing: {
+      version: '1.0',
+      methods: [
+        'test.discover',
+        'test.run',
+        'test.analyze',
+        'test.history',
+        'test.flaky'
+      ]
+    },
+    todo_management: {
+      version: '1.0',
+      methods: [
+        'todo.scan',
+        'todo.categorize',
+        'todo.findRelated',
+        'todo.update'
+      ]
+    },
+    get_to_work_workflow: {
+      version: '1.0',
+      methods: [
+        'test.discover',
+        'test.run',
+        'test.analyze',
+        'todo.scan',
+        'todo.categorize'
+      ]
     }
   };
   

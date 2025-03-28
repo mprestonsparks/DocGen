@@ -2,8 +2,8 @@
 
 This implementation plan outlines the strategy for integrating Model Context Protocol (MCP) servers into the DocGen project using Docker, based on DeepResearch findings and official MCP specifications.
 
-> **IMPLEMENTATION STATUS (Updated 2025-03-27T16:00:00-05:00):**  
-> Phase 1 and Phase 2 have been completed. MCP servers are now running with proper Docker configuration, environment variable-based credential management, dynamic port allocation, streaming responses, file system access, advanced GitHub integration, authentication with rate limiting, and multi-server orchestration. The infrastructure is ready for further development in Phase 3, with focus areas identified for strengthening the implementation before adding advanced capabilities.
+> **IMPLEMENTATION STATUS (Updated 2025-03-28T12:45:00-05:00):**  
+> Phase 1 and Phase 2 have been completed. MCP servers are now running with proper Docker configuration, environment variable-based credential management, dynamic port allocation, streaming responses, file system access, advanced GitHub integration, authentication with rate limiting, and multi-server orchestration. Additionally, we've implemented a TypeScript-based MCP bridge that enables integration with Windsurf on Windows. The infrastructure is ready for further development in Phase 3, with focus areas identified for strengthening the implementation before adding advanced capabilities.
 
 ## 1. Architectural Foundation
 
@@ -51,6 +51,12 @@ Our implementation will enforce:
 │   │   ├── mcp_server_setup.py        # Cross-platform MCP setup script
 │   │   └── mcp_health_check.py        # Health monitoring for MCP servers
 │   └── deploy.sh                      # Deployment script for CI/CD integration
+├── src/
+│   ├── mcp/
+│   │   └── bridge/                    # MCP bridge for Windsurf integration
+│   │       ├── mcp-bridge.ts          # TypeScript bridge implementation
+│   │       ├── package.json           # Dependencies for the bridge
+│   │       └── tsconfig.json          # TypeScript configuration
 └── docs/
     └── mcp-setup.md                   # Documentation for MCP setup
 ```
@@ -337,3 +343,78 @@ With Phases 1 and 2 successfully completed, Phase 3 will focus on implementing t
 
 > **IMPLEMENTATION NOTE:**  
 > By focusing on these specific capabilities, we will deliver MCP servers that integrate seamlessly with Windsurf's built-in Cascade AI, enabling it to automate the "get-to-work" workflow without requiring additional IDE plugins or complex integration code. This approach aligns with our project's goal of enhancing AI capabilities while maintaining simplicity and focusing on our core objectives.
+
+## 7. Windsurf Integration
+
+### 7.1 MCP Bridge Architecture
+
+To enable integration with Windsurf, we've implemented a TypeScript-based MCP bridge that:
+
+1. Implements the stdio transport interface that Windsurf requires
+2. Forwards requests from Windsurf to our Docker-based HTTP MCP servers
+3. Returns responses back to Windsurf
+
+This bridge approach allows us to maintain our Docker-based infrastructure while providing seamless integration with Windsurf.
+
+```
+┌─────────────┐      stdio      ┌─────────────┐      HTTP      ┌─────────────┐
+│   Windsurf  │ ◄──────────────►│ MCP Bridge  │ ◄─────────────►│ MCP Servers │
+└─────────────┘                 └─────────────┘                └─────────────┘
+```
+
+### 7.2 Automated Deployment
+
+The `deploy_mcp.py` script has been enhanced to:
+
+1. Deploy Docker containers for MCP servers
+2. Build the TypeScript MCP bridge
+3. Configure Windsurf to use the bridge
+
+This automation ensures a streamlined setup process for developers.
+
+### 7.3 Configuration Format
+
+Windsurf requires a specific configuration format in `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "docgen-mcp-bridge": {
+      "command": "node",
+      "args": [
+        "/path/to/mcp-bridge.js"
+      ],
+      "env": {
+        "MCP_ORCHESTRATOR_URL": "http://localhost:8080/mcp",
+        "MCP_API_KEY": "development_key"
+      }
+    }
+  }
+}
+```
+
+The deployment script automatically generates this configuration based on the current environment.
+
+## 8. Future Development
+
+### 8.1 Cross-Platform Support
+
+The current implementation supports Windsurf on Windows. Future development will extend support to:
+
+- Windsurf on macOS
+- Windsurf on Linux
+- Claude Code on macOS
+- Other AI-assisted development tools
+
+### 8.2 Modular Bridge Architecture
+
+To support multiple tools and platforms, we plan to refactor the bridge implementation into a more modular architecture:
+
+```
+/src/mcp/bridge/
+  /common/          # Shared code for all bridges
+  /windsurf/        # Windsurf-specific bridge implementation
+  /claude-code/     # Claude Code-specific bridge implementation
+```
+
+This modular approach will maintain a consistent user experience across different environments while accommodating the specific requirements of each tool.

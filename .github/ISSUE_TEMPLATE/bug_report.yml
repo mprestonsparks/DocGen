@@ -1,0 +1,66 @@
+name: "Bug Report"
+about: "Create a report to help us improve"
+title: "[BUG] Short description"
+labels: ["bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Thanks for helping us improve! Please fill out all the information below.**
+  - type: input
+    id: summary
+    attributes:
+      label: "Short summary of the issue"
+      description: "E.g., 'Saving a record fails when using Chrome on macOS'"
+      placeholder: "Type a short summary here..."
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: "Detailed Description"
+      description: "Include steps to reproduce the bug, and any relevant logs or screenshots."
+      placeholder: "Describe the issue in detail..."
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: "Environment"
+      description: "Browser, OS, SaaS plan type, etc."
+      placeholder: "E.g., Chrome 110, macOS 13.0, Production environment..."
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected Behavior"
+      description: "What you expected to happen instead."
+      placeholder: "Describe what should happen..."
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: "Actual Behavior"
+      description: "What actually happened, including any error messages or screenshots."
+      placeholder: "Describe what really happened..."
+    validations:
+      required: true
+  - type: checkboxes
+    id: severity
+    attributes:
+      label: "Severity Level"
+      description: "How critical is this bug?"
+      options:
+        - label: "High - Blocks usage"
+          value: "high"
+        - label: "Medium - Impacts usage but not blocking"
+          value: "medium"
+        - label: "Low - Minor issue"
+          value: "low"
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: "Additional Information / Context"
+      description: "Any other details that might help us debug further."
+      placeholder: "Optional"

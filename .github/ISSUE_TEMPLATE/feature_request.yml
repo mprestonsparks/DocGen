@@ -1,0 +1,63 @@
+name: "Feature Request"
+about: "Suggest a new feature for our product"
+title: "[FEATURE] Short description"
+labels: ["enhancement"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Help us grow! Please fill out the details about the feature you want to see.**
+  - type: input
+    id: summary
+    attributes:
+      label: "Feature Summary"
+      description: "Give a clear, concise summary of the feature request."
+      placeholder: "E.g., 'Add 2FA using email or SMS'"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: "Feature Description"
+      description: "What is the proposed feature, and how would it work?"
+      placeholder: "Describe your feature idea in detail..."
+    validations:
+      required: true
+  - type: textarea
+    id: user_story
+    attributes:
+      label: "User Story (if applicable)"
+      description: "Explain the persona and use case. E.g., 'As a user, I want... so that...'"
+      placeholder: "As a [type of user], I want [some goal] so that [some reason]..."
+  - type: textarea
+    id: motivation
+    attributes:
+      label: "Motivation / Rationale"
+      description: "Why do you need this feature? How does it benefit users or the business?"
+      placeholder: "Provide reasons, benefits, or examples..."
+    validations:
+      required: true
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: "Potential Impact"
+      options:
+        - label: "High - critical for many users"
+          value: "high"
+        - label: "Medium - would be nice for many users"
+          value: "medium"
+        - label: "Low - small improvement or niche use case"
+          value: "low"
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives or Workarounds"
+      description: "Describe any alternative solutions or workarounds you’ve considered."
+      placeholder: "Optional"
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: "Additional Context"
+      description: "Any further details or references to relevant resources."
+      placeholder: "Optional"

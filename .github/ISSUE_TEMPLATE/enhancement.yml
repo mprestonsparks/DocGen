@@ -1,0 +1,56 @@
+name: "Enhancement"
+about: "Propose an improvement to existing features"
+title: "[ENHANCEMENT] Short description"
+labels: ["enhancement"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Have an idea for making something better? Let us know!**
+  - type: input
+    id: summary
+    attributes:
+      label: "Enhancement Summary"
+      description: "Quickly describe what you'd like to improve."
+      placeholder: "E.g., 'Allow custom data exports in CSV and Excel'"
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: "Current Issue / Context"
+      description: "Why is this improvement necessary? What problem does it solve?"
+      placeholder: "Describe the situation..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Proposed Enhancement"
+      description: "Explain your proposal in detail and how it might look."
+      placeholder: "Describe the change..."
+      render: "markdown"
+    validations:
+      required: true
+  - type: textarea
+    id: benefits
+    attributes:
+      label: "Benefits"
+      description: "How does this enhancement help users, the product, or the business?"
+      placeholder: "E.g., increased usability, better performance, better UX..."
+      render: "markdown"
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: "Potential Risks / Considerations"
+      description: "Are there any drawbacks or things we need to watch out for?"
+      placeholder: "E.g., performance overhead, might conflict with X..."
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: "Additional Context / Mockups"
+      description: "If applicable, provide extra details or attach sketches/screenshots."
+      placeholder: "Optional"

@@ -1,0 +1,49 @@
+name: "Support / Question"
+about: "Ask for help or clarification about our SaaS product"
+title: "[SUPPORT] Short description"
+labels: ["question", "support"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Need help? We’re here to assist. Please provide as many details as possible.**
+  - type: input
+    id: question_summary
+    attributes:
+      label: "Question Summary"
+      description: "Brief overview of what you need help with."
+      placeholder: "E.g., 'Confusion about billing tiers'"
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: "Details"
+      description: "Explain what you're trying to do, what's confusing, etc."
+      placeholder: "Describe your question in detail..."
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: "Context"
+      description: "Include environment details, account type, relevant URL, etc."
+      placeholder: "Any context that might help us answer..."
+  - type: checkboxes
+    id: severity
+    attributes:
+      label: "Severity / Urgency"
+      options:
+        - label: "High - Blocking usage"
+          value: "high"
+        - label: "Medium - Important, but not blocking"
+          value: "medium"
+        - label: "Low - Just a question for curiosity"
+          value: "low"
+  - type: textarea
+    id: attempted_solutions
+    attributes:
+      label: "What have you tried?"
+      description: "List any steps you took to troubleshoot or find an answer."
+      placeholder: "Optional"

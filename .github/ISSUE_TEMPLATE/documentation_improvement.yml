@@ -1,0 +1,51 @@
+name: "Documentation Improvement"
+about: "Suggest improvements or report issues with documentation"
+title: "[DOC] Short description"
+labels: ["documentation"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Help us make our docs better!**
+  - type: input
+    id: doc_section
+    attributes:
+      label: "Documentation Section/URL"
+      description: "Which guide or section needs work?"
+      placeholder: "E.g., 'API Reference for v1/GET /users', 'README setup instructions'"
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: "Current Documentation"
+      description: "What’s incorrect, unclear, or missing?"
+      placeholder: "Describe the issue with the existing docs..."
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: "Suggested Improvement"
+      description: "How can we make it better or more accurate?"
+      placeholder: "Describe your suggested changes..."
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: "Example / Additional Context"
+      description: "Example of corrected wording, code samples, or diagrams."
+      placeholder: "Optional"
+  - type: checkboxes
+    id: priority
+    attributes:
+      label: "Priority"
+      options:
+        - label: "High - Documentation is severely incorrect or lacking"
+          value: "high"
+        - label: "Medium - Improvement is beneficial"
+          value: "medium"
+        - label: "Low - Minor improvement or clarity"
+          value: "low"
